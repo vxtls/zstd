@@ -496,6 +496,7 @@ typedef enum {
      * ZSTD_c_prefetchCDictTables
      * ZSTD_c_enableSeqProducerFallback
      * ZSTD_c_maxBlockSize
+     * ZSTD_c_blockSplitter_level
      * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
      * note : never ever use experimentalParam? names directly;
      *        also, the enums values themselves are unstable and can still change.
@@ -518,7 +519,8 @@ typedef enum {
      ZSTD_c_experimentalParam16=1013,
      ZSTD_c_experimentalParam17=1014,
      ZSTD_c_experimentalParam18=1015,
-     ZSTD_c_experimentalParam19=1016
+     ZSTD_c_experimentalParam19=1016,
+     ZSTD_c_experimentalParam20=1017
 } ZSTD_cParameter;
 
 typedef struct {
@@ -2236,7 +2238,6 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * that overrides the default ZSTD_BLOCKSIZE_MAX. It cannot be used to set upper
  * bounds greater than ZSTD_BLOCKSIZE_MAX or bounds lower than 1KB (will make
  * compressBound() inaccurate). Only currently meant to be used for testing.
- *
  */
 #define ZSTD_c_maxBlockSize ZSTD_c_experimentalParam18
 
@@ -2263,6 +2264,24 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * set to ZSTD_sf_explicitBlockDelimiters. That may change in the future.
  */
 #define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19
+
+/* ZSTD_c_blockSplitter_level
+ * note: this parameter only influences the first splitter stage,
+ *       which is active before producing the sequences.
+ *       ZSTD_c_useBlockSplitter influence the next splitter stage,
+ *       which is active after sequence production,
+ *       and is more accurate but also slower.
+ *       Both can be combined.
+ * Allowed values are between 0 and 6.
+ * 0 means "auto", which will select a value depending on current ZSTD_c_strategy.
+ * 1 means no splitting.
+ * Then, values from 2 to 6 are sorted in increasing cpu load order.
+ *
+ * Note that currently the first block is never split,
+ * to ensure expansion guarantees in presence of incompressible data.
+ */
+#define ZSTD_BLOCKSPLITTER_LEVEL_MAX 6
+#define ZSTD_c_blockSplitter_level ZSTD_c_experimentalParam20
 
 /*! ZSTD_CCtx_getParameter() :
  *  Get the requested compression parameter value, selected by enum ZSTD_cParameter,
