@@ -323,7 +323,7 @@ static ZSTD_CCtx_params ZSTD_makeCCtxParamsFromCParams(
         assert(cctxParams.ldmParams.hashLog >= cctxParams.ldmParams.bucketSizeLog);
         assert(cctxParams.ldmParams.hashRateLog < 32);
     }
-    cctxParams.useBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams.useBlockSplitter, &cParams);
+    cctxParams.postBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams.postBlockSplitter, &cParams);
     cctxParams.useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams.useRowMatchFinder, &cParams);
     cctxParams.validateSequences = ZSTD_resolveExternalSequenceValidation(cctxParams.validateSequences);
     cctxParams.maxBlockSize = ZSTD_resolveMaxBlockSize(cctxParams.maxBlockSize);
@@ -391,13 +391,13 @@ ZSTD_CCtxParams_init_internal(ZSTD_CCtx_params* cctxParams,
      */
     cctxParams->compressionLevel = compressionLevel;
     cctxParams->useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(cctxParams->useRowMatchFinder, &params->cParams);
-    cctxParams->useBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->useBlockSplitter, &params->cParams);
+    cctxParams->postBlockSplitter = ZSTD_resolveBlockSplitterMode(cctxParams->postBlockSplitter, &params->cParams);
     cctxParams->ldmParams.enableLdm = ZSTD_resolveEnableLdm(cctxParams->ldmParams.enableLdm, &params->cParams);
     cctxParams->validateSequences = ZSTD_resolveExternalSequenceValidation(cctxParams->validateSequences);
     cctxParams->maxBlockSize = ZSTD_resolveMaxBlockSize(cctxParams->maxBlockSize);
     cctxParams->searchForExternalRepcodes = ZSTD_resolveExternalRepcodeSearch(cctxParams->searchForExternalRepcodes, compressionLevel);
     DEBUGLOG(4, "ZSTD_CCtxParams_init_internal: useRowMatchFinder=%d, useBlockSplitter=%d ldm=%d",
-                cctxParams->useRowMatchFinder, cctxParams->useBlockSplitter, cctxParams->ldmParams.enableLdm);
+                cctxParams->useRowMatchFinder, cctxParams->postBlockSplitter, cctxParams->ldmParams.enableLdm);
 }
 
 size_t ZSTD_CCtxParams_init_advanced(ZSTD_CCtx_params* cctxParams, ZSTD_parameters params)
@@ -977,8 +977,8 @@ size_t ZSTD_CCtxParams_setParameter(ZSTD_CCtx_params* CCtxParams,
 
     case ZSTD_c_useBlockSplitter:
         BOUNDCHECK(ZSTD_c_useBlockSplitter, value);
-        CCtxParams->useBlockSplitter = (ZSTD_paramSwitch_e)value;
-        return CCtxParams->useBlockSplitter;
+        CCtxParams->postBlockSplitter = (ZSTD_paramSwitch_e)value;
+        return CCtxParams->postBlockSplitter;
 
     case ZSTD_c_useRowMatchFinder:
         BOUNDCHECK(ZSTD_c_useRowMatchFinder, value);
@@ -1136,7 +1136,7 @@ size_t ZSTD_CCtxParams_getParameter(
         *value = (int)CCtxParams->validateSequences;
         break;
     case ZSTD_c_useBlockSplitter :
-        *value = (int)CCtxParams->useBlockSplitter;
+        *value = (int)CCtxParams->postBlockSplitter;
         break;
     case ZSTD_c_useRowMatchFinder :
         *value = (int)CCtxParams->useRowMatchFinder;
@@ -2111,7 +2111,7 @@ static size_t ZSTD_resetCCtx_internal(ZSTD_CCtx* zc,
     params = &zc->appliedParams;
 
     assert(params->useRowMatchFinder != ZSTD_ps_auto);
-    assert(params->useBlockSplitter != ZSTD_ps_auto);
+    assert(params->postBlockSplitter != ZSTD_ps_auto);
     assert(params->ldmParams.enableLdm != ZSTD_ps_auto);
     assert(params->maxBlockSize != 0);
     if (params->ldmParams.enableLdm == ZSTD_ps_enable) {
@@ -2517,10 +2517,10 @@ static size_t ZSTD_copyCCtx_internal(ZSTD_CCtx* dstCCtx,
         /* Copy only compression parameters related to tables. */
         params.cParams = srcCCtx->appliedParams.cParams;
         assert(srcCCtx->appliedParams.useRowMatchFinder != ZSTD_ps_auto);
-        assert(srcCCtx->appliedParams.useBlockSplitter != ZSTD_ps_auto);
+        assert(srcCCtx->appliedParams.postBlockSplitter != ZSTD_ps_auto);
         assert(srcCCtx->appliedParams.ldmParams.enableLdm != ZSTD_ps_auto);
         params.useRowMatchFinder = srcCCtx->appliedParams.useRowMatchFinder;
-        params.useBlockSplitter = srcCCtx->appliedParams.useBlockSplitter;
+        params.postBlockSplitter = srcCCtx->appliedParams.postBlockSplitter;
         params.ldmParams = srcCCtx->appliedParams.ldmParams;
         params.fParams = fParams;
         params.maxBlockSize = srcCCtx->appliedParams.maxBlockSize;
@@ -2728,9 +2728,9 @@ static int ZSTD_useTargetCBlockSize(const ZSTD_CCtx_params* cctxParams)
  * Returns 1 if true, 0 otherwise. */
 static int ZSTD_blockSplitterEnabled(ZSTD_CCtx_params* cctxParams)
 {
-    DEBUGLOG(5, "ZSTD_blockSplitterEnabled (useBlockSplitter=%d)", cctxParams->useBlockSplitter);
-    assert(cctxParams->useBlockSplitter != ZSTD_ps_auto);
-    return (cctxParams->useBlockSplitter == ZSTD_ps_enable);
+    DEBUGLOG(5, "ZSTD_blockSplitterEnabled (postBlockSplitter=%d)", cctxParams->postBlockSplitter);
+    assert(cctxParams->postBlockSplitter != ZSTD_ps_auto);
+    return (cctxParams->postBlockSplitter == ZSTD_ps_enable);
 }
 
 /* Type returned by ZSTD_buildSequencesStatistics containing finalized symbol encoding types
@@ -4300,7 +4300,7 @@ ZSTD_compressBlock_splitBlock(ZSTD_CCtx* zc,
     U32 nbSeq;
     size_t cSize;
     DEBUGLOG(4, "ZSTD_compressBlock_splitBlock");
-    assert(zc->appliedParams.useBlockSplitter == ZSTD_ps_enable);
+    assert(zc->appliedParams.postBlockSplitter == ZSTD_ps_enable);
 
     {   const size_t bss = ZSTD_buildSeqStore(zc, src, srcSize);
         FORWARD_IF_ERROR(bss, "ZSTD_buildSeqStore failed");
@@ -4491,7 +4491,7 @@ static void ZSTD_overflowCorrectIfNeeded(ZSTD_matchState_t* ms,
 
 #include "zstd_preSplit.h"
 
-static size_t ZSTD_optimalBlockSize(ZSTD_CCtx* cctx, const void* src, size_t srcSize, size_t blockSizeMax, ZSTD_strategy strat, S64 savings)
+static size_t ZSTD_optimalBlockSize(ZSTD_CCtx* cctx, const void* src, size_t srcSize, size_t blockSizeMax, int splitLevel, ZSTD_strategy strat, S64 savings)
 {
     /* split level based on compression strategy, from `fast` to `btultra2` */
     static const int splitLevels[] = { 0, 0, 1, 2, 2, 3, 3, 4, 4, 4 };
@@ -4506,9 +4506,18 @@ static size_t ZSTD_optimalBlockSize(ZSTD_CCtx* cctx, const void* src, size_t src
      * Note: as a consequence, the first full block is not split.
      */
     if (savings < 3) return 128 KB;
-    /* dynamic splitting has a cpu cost for analysis,
-     * select a variant among multiple gradual speed/accuracy tradeoffs */
-    return ZSTD_splitBlock(src, blockSizeMax, splitLevels[strat], cctx->tmpWorkspace, cctx->tmpWkspSize);
+    /* apply @splitLevel, or use default value (which depends on @strat).
+     * note that splitting heuristic is still conditioned by @savings >= 3,
+     * so the first block will not reach this code path */
+    if (splitLevel == 1) return 128 KB;
+    if (splitLevel == 0) {
+        assert(ZSTD_fast <= strat && strat <= ZSTD_btultra2);
+        splitLevel = splitLevels[strat];
+    } else {
+        assert(2 <= splitLevel && splitLevel <= 6);
+        splitLevel -= 2;
+    }
+    return ZSTD_splitBlock(src, blockSizeMax, splitLevel, cctx->tmpWorkspace, cctx->tmpWkspSize);
 }
 
 /*! ZSTD_compress_frameChunk() :
@@ -4539,7 +4548,12 @@ static size_t ZSTD_compress_frameChunk(ZSTD_CCtx* cctx,
 
     while (remaining) {
         ZSTD_matchState_t* const ms = &cctx->blockState.matchState;
-        size_t const blockSize = ZSTD_optimalBlockSize(cctx, ip, remaining, blockSizeMax, cctx->appliedParams.cParams.strategy, savings);
+        size_t const blockSize = ZSTD_optimalBlockSize(cctx,
+                                ip, remaining,
+                                blockSizeMax,
+                                cctx->appliedParams.preBlockSplitter_level,
+                                cctx->appliedParams.cParams.strategy,
+                                savings);
         U32 const lastBlock = lastFrameChunk & (blockSize == remaining);
         assert(blockSize <= remaining);
 
@@ -6286,7 +6300,7 @@ static size_t ZSTD_CCtx_init_compressStream2(ZSTD_CCtx* cctx,
                 dictSize, mode);
     }
 
-    params.useBlockSplitter = ZSTD_resolveBlockSplitterMode(params.useBlockSplitter, &params.cParams);
+    params.postBlockSplitter = ZSTD_resolveBlockSplitterMode(params.postBlockSplitter, &params.cParams);
     params.ldmParams.enableLdm = ZSTD_resolveEnableLdm(params.ldmParams.enableLdm, &params.cParams);
     params.useRowMatchFinder = ZSTD_resolveRowMatchFinderMode(params.useRowMatchFinder, &params.cParams);
     params.validateSequences = ZSTD_resolveExternalSequenceValidation(params.validateSequences);
