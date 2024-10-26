@@ -229,6 +229,7 @@ size_t ZSTD_splitBlock(const void* blockStart, size_t blockSize,
                     int level,
                     void* workspace, size_t wkspSize)
 {
+    DEBUGLOG(6, "ZSTD_splitBlock (level=%i)", level);
     assert(0<=level && level<=4);
     if (level == 0)
         return ZSTD_splitBlock_fromBorders(blockStart, blockSize, workspace, wkspSize);

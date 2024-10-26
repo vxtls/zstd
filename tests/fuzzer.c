@@ -559,6 +559,67 @@ static void test_setCParams(unsigned tnb)
     DISPLAYLEVEL(3, "OK \n");
 }
 
+static void test_blockSplitter_incompressibleExpansionProtection(unsigned testNb, unsigned seed)
+{
+    DISPLAYLEVEL(3, "test%3i : Check block splitter doesn't oversplit incompressible data (seed %u): ", testNb, seed);
+    {   ZSTD_CCtx* cctx = ZSTD_createCCtx();
+        size_t const srcSize = 256 * 1024; /* needs to be at least 2 blocks */
+        void* incompressible = malloc(srcSize);
+        size_t const dstCapacity = ZSTD_compressBound(srcSize);
+        void* cBuffer = malloc(dstCapacity);
+        size_t const chunkSize = 8 KB;
+        size_t const nbChunks = srcSize / chunkSize;
+        size_t chunkNb, cSizeNoSplit, cSizeWithSplit;
+        assert(cctx != NULL);
+        assert(incompressible != NULL);
+        assert(cBuffer != NULL);
+
+        /* let's fill input with random noise (incompressible) */
+        RDG_genBuffer(incompressible, srcSize, 0.0, 0.0, seed);
+        DISPLAYLEVEL(4, "(hash: %llx) ", XXH64(incompressible, srcSize, 0));
+
+        /* this pattern targets the fastest _byChunk variant's sampling (level 3).
+         * manually checked that, without the @savings protection, it would over-split.
+         */
+        for (chunkNb=0; chunkNb<nbChunks; chunkNb++) {
+            BYTE* const p = (BYTE*)incompressible + chunkNb * chunkSize;
+            size_t const samplingRate = 43;
+            int addOrRemove = chunkNb % 2;
+            size_t n;
+            for (n=0; n<chunkSize; n+=samplingRate) {
+                if (addOrRemove) {
+                    p[n] &= 0x80;
+                } else {
+                    p[n] |= 0x80;
+                }
+            }
+        }
+
+        /* run first without splitting */
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitter_level, 1 /* no split */);
+        cSizeNoSplit = ZSTD_compress2(cctx, cBuffer, dstCapacity, incompressible, srcSize);
+
+        /* run with sample43 splitter, check it's still the same */
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitter_level, 3 /* sample43, fastest _byChunk variant */);
+        cSizeWithSplit = ZSTD_compress2(cctx, cBuffer, dstCapacity, incompressible, srcSize);
+
+        if (cSizeWithSplit != cSizeNoSplit) {
+            DISPLAYLEVEL(1, "invalid compressed size: cSizeWithSplit %u != %u cSizeNoSplit \n",
+                    (unsigned)cSizeWithSplit, (unsigned)cSizeNoSplit);
+            abort();
+        }
+        DISPLAYLEVEL(4, "compressed size: cSizeWithSplit %u == %u cSizeNoSplit : ",
+                (unsigned)cSizeWithSplit, (unsigned)cSizeNoSplit);
+
+        free(incompressible);
+        free(cBuffer);
+        ZSTD_freeCCtx(cctx);
+    }
+    DISPLAYLEVEL(3, "OK \n");
+}
+
+/* ============================================================= */
+
 static int basicUnitTests(U32 const seed, double compressibility)
 {
     size_t const CNBuffSize = 5 MB;
@@ -1373,6 +1434,8 @@ static int basicUnitTests(U32 const seed, double compressibility)
         ZSTD_freeCCtx(cctx);
     }
     DISPLAYLEVEL(3, "OK \n");
+
+    test_blockSplitter_incompressibleExpansionProtection(testNb++, seed);
 
     DISPLAYLEVEL(3, "test%3d : superblock uncompressible data: too many nocompress superblocks : ", testNb++);
     {

@@ -2114,7 +2114,7 @@ static size_t ZSTD_resetCCtx_internal(ZSTD_CCtx* zc,
 {
     ZSTD_cwksp* const ws = &zc->workspace;
     DEBUGLOG(4, "ZSTD_resetCCtx_internal: pledgedSrcSize=%u, wlog=%u, useRowMatchFinder=%d useBlockSplitter=%d",
-                (U32)pledgedSrcSize, params->cParams.windowLog, (int)params->useRowMatchFinder, (int)params->useBlockSplitter);
+                (U32)pledgedSrcSize, params->cParams.windowLog, (int)params->useRowMatchFinder, (int)params->postBlockSplitter);
     assert(!ZSTD_isError(ZSTD_checkCParams(params->cParams)));
 
     zc->isFirstBlock = 1;
@@ -4520,7 +4520,10 @@ static size_t ZSTD_optimalBlockSize(ZSTD_CCtx* cctx, const void* src, size_t src
      * require verified savings to allow pre-splitting.
      * Note: as a consequence, the first full block is not split.
      */
-    if (savings < 3) return 128 KB;
+    if (savings < 3) {
+        DEBUGLOG(6, "don't attempt splitting: savings (%lli) too low", savings);
+        return 128 KB;
+    }
     /* apply @splitLevel, or use default value (which depends on @strat).
      * note that splitting heuristic is still conditioned by @savings >= 3,
      * so the first block will not reach this code path */
