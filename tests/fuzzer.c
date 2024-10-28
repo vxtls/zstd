@@ -576,7 +576,6 @@ static void test_blockSplitter_incompressibleExpansionProtection(unsigned testNb
 
         /* let's fill input with random noise (incompressible) */
         RDG_genBuffer(incompressible, srcSize, 0.0, 0.0, seed);
-        DISPLAYLEVEL(4, "(hash: %llx) ", XXH64(incompressible, srcSize, 0));
 
         /* this pattern targets the fastest _byChunk variant's sampling (level 3).
          * manually checked that, without the @savings protection, it would over-split.
