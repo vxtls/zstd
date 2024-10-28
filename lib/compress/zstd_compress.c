@@ -4521,7 +4521,7 @@ static size_t ZSTD_optimalBlockSize(ZSTD_CCtx* cctx, const void* src, size_t src
      * Note: as a consequence, the first full block is not split.
      */
     if (savings < 3) {
-        DEBUGLOG(6, "don't attempt splitting: savings (%lli) too low", savings);
+        DEBUGLOG(6, "don't attempt splitting: savings (%i) too low", (int)savings);
         return 128 KB;
     }
     /* apply @splitLevel, or use default value (which depends on @strat).
