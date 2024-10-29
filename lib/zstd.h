@@ -496,7 +496,7 @@ typedef enum {
      * ZSTD_c_prefetchCDictTables
      * ZSTD_c_enableSeqProducerFallback
      * ZSTD_c_maxBlockSize
-     * ZSTD_c_blockSplitter_level
+     * ZSTD_c_blockSplitterLevel
      * Because they are not stable, it's necessary to define ZSTD_STATIC_LINKING_ONLY to access them.
      * note : never ever use experimentalParam? names directly;
      *        also, the enums values themselves are unstable and can still change.
@@ -2265,7 +2265,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  */
 #define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19
 
-/* ZSTD_c_blockSplitter_level
+/* ZSTD_c_blockSplitterLevel
  * note: this parameter only influences the first splitter stage,
  *       which is active before producing the sequences.
  *       ZSTD_c_useBlockSplitter influence the next splitter stage,
@@ -2281,7 +2281,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * to ensure expansion guarantees in presence of incompressible data.
  */
 #define ZSTD_BLOCKSPLITTER_LEVEL_MAX 6
-#define ZSTD_c_blockSplitter_level ZSTD_c_experimentalParam20
+#define ZSTD_c_blockSplitterLevel ZSTD_c_experimentalParam20
 
 /*! ZSTD_CCtx_getParameter() :
  *  Get the requested compression parameter value, selected by enum ZSTD_cParameter,

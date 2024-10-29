@@ -595,11 +595,11 @@ static void test_blockSplitter_incompressibleExpansionProtection(unsigned testNb
         }
 
         /* run first without splitting */
-        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitter_level, 1 /* no split */);
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitterLevel, 1 /* no split */);
         cSizeNoSplit = ZSTD_compress2(cctx, cBuffer, dstCapacity, incompressible, srcSize);
 
         /* run with sample43 splitter, check it's still the same */
-        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitter_level, 3 /* sample43, fastest _byChunk variant */);
+        ZSTD_CCtx_setParameter(cctx, ZSTD_c_blockSplitterLevel, 3 /* sample43, fastest _byChunk variant */);
         cSizeWithSplit = ZSTD_compress2(cctx, cBuffer, dstCapacity, incompressible, srcSize);
 
         if (cSizeWithSplit != cSizeNoSplit) {
