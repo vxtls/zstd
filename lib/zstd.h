@@ -15,7 +15,6 @@ extern "C" {
 #define ZSTD_H_235446
 
 /* ======   Dependencies   ======*/
-#include <limits.h>   /* INT_MAX */
 #include <stddef.h>   /* size_t */
 
 
@@ -106,7 +105,7 @@ extern "C" {
 /*------   Version   ------*/
 #define ZSTD_VERSION_MAJOR    1
 #define ZSTD_VERSION_MINOR    5
-#define ZSTD_VERSION_RELEASE  6
+#define ZSTD_VERSION_RELEASE  7
 #define ZSTD_VERSION_NUMBER  (ZSTD_VERSION_MAJOR *100*100 + ZSTD_VERSION_MINOR *100 + ZSTD_VERSION_RELEASE)
 
 /*! ZSTD_versionNumber() :
@@ -144,7 +143,7 @@ ZSTDLIB_API const char* ZSTD_versionString(void);
 
 
 /***************************************
-*  Simple API
+*  Simple Core API
 ***************************************/
 /*! ZSTD_compress() :
  *  Compresses `src` content as a single zstd compressed frame into already allocated `dst`.
@@ -167,6 +166,9 @@ ZSTDLIB_API size_t ZSTD_compress( void* dst, size_t dstCapacity,
  *           or an errorCode if it fails (which can be tested using ZSTD_isError()). */
 ZSTDLIB_API size_t ZSTD_decompress( void* dst, size_t dstCapacity,
                               const void* src, size_t compressedSize);
+
+
+/*======  Decompression helper functions  ======*/
 
 /*! ZSTD_getFrameContentSize() : requires v1.3.0+
  * `src` should point to the start of a ZSTD encoded frame.
@@ -214,10 +216,11 @@ unsigned long long ZSTD_getDecompressedSize(const void* src, size_t srcSize);
 ZSTDLIB_API size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize);
 
 
-/*======  Helper functions  ======*/
+/*======  Compression helper functions  ======*/
+
 /* ZSTD_compressBound() :
  * maximum compressed size in worst case single-pass scenario.
- * When invoking `ZSTD_compress()` or any other one-pass compression function,
+ * When invoking `ZSTD_compress()`, or any other one-pass compression function,
  * it's recommended to provide @dstCapacity >= ZSTD_compressBound(srcSize)
  * as it eliminates one potential failure scenario,
  * aka not enough room in dst buffer to write the compressed frame.
@@ -229,21 +232,26 @@ ZSTDLIB_API size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize)
  * same as ZSTD_compressBound(), but as a macro.
  * It can be used to produce constants, which can be useful for static allocation,
  * for example to size a static array on stack.
- * Will produce constant value 0 if srcSize too large.
+ * Will produce constant value 0 if srcSize is too large.
  */
 #define ZSTD_MAX_INPUT_SIZE ((sizeof(size_t)==8) ? 0xFF00FF00FF00FF00ULL : 0xFF00FF00U)
 #define ZSTD_COMPRESSBOUND(srcSize)   (((size_t)(srcSize) >= ZSTD_MAX_INPUT_SIZE) ? 0 : (srcSize) + ((srcSize)>>8) + (((srcSize) < (128<<10)) ? (((128<<10) - (srcSize)) >> 11) /* margin, from 64 to 0 */ : 0))  /* this formula ensures that bound(A) + bound(B) <= bound(A+B) as long as A and B >= 128 KB */
 ZSTDLIB_API size_t ZSTD_compressBound(size_t srcSize); /*!< maximum compressed size in worst case single-pass scenario */
+
+
+/*======  Error helper functions  ======*/
+#include "zstd_errors.h" /* list of errors */
 /* ZSTD_isError() :
  * Most ZSTD_* functions returning a size_t value can be tested for error,
  * using ZSTD_isError().
  * @return 1 if error, 0 otherwise
  */
-ZSTDLIB_API unsigned    ZSTD_isError(size_t code);          /*!< tells if a `size_t` function result is an error code */
-ZSTDLIB_API const char* ZSTD_getErrorName(size_t code);     /*!< provides readable string from an error code */
-ZSTDLIB_API int         ZSTD_minCLevel(void);               /*!< minimum negative compression level allowed, requires v1.4.0+ */
-ZSTDLIB_API int         ZSTD_maxCLevel(void);               /*!< maximum compression level available */
-ZSTDLIB_API int         ZSTD_defaultCLevel(void);           /*!< default compression level, specified by ZSTD_CLEVEL_DEFAULT, requires v1.5.0+ */
+ZSTDLIB_API unsigned     ZSTD_isError(size_t result);      /*!< tells if a `size_t` function result is an error code */
+ZSTDLIB_API ZSTD_ErrorCode ZSTD_getErrorCode(size_t functionResult); /* convert a result into an error code, which can be compared to error enum list */
+ZSTDLIB_API const char*  ZSTD_getErrorName(size_t result); /*!< provides readable string from a function result */
+ZSTDLIB_API int          ZSTD_minCLevel(void);             /*!< minimum negative compression level allowed, requires v1.4.0+ */
+ZSTDLIB_API int          ZSTD_maxCLevel(void);             /*!< maximum compression level available */
+ZSTDLIB_API int          ZSTD_defaultCLevel(void);         /*!< default compression level, specified by ZSTD_CLEVEL_DEFAULT, requires v1.5.0+ */
 
 
 /***************************************
@@ -251,17 +259,17 @@ ZSTDLIB_API int         ZSTD_defaultCLevel(void);           /*!< default compres
 ***************************************/
 /*= Compression context
  *  When compressing many times,
- *  it is recommended to allocate a context just once,
+ *  it is recommended to allocate a compression context just once,
  *  and reuse it for each successive compression operation.
- *  This will make workload friendlier for system's memory.
+ *  This will make the workload easier for system's memory.
  *  Note : re-using context is just a speed / resource optimization.
  *         It doesn't change the compression ratio, which remains identical.
- *  Note 2 : In multi-threaded environments,
- *         use one different context per thread for parallel execution.
+ *  Note 2: For parallel execution in multi-threaded environments,
+ *         use one different context per thread .
  */
 typedef struct ZSTD_CCtx_s ZSTD_CCtx;
 ZSTDLIB_API ZSTD_CCtx* ZSTD_createCCtx(void);
-ZSTDLIB_API size_t     ZSTD_freeCCtx(ZSTD_CCtx* cctx);  /* accept NULL pointer */
+ZSTDLIB_API size_t     ZSTD_freeCCtx(ZSTD_CCtx* cctx);  /* compatible with NULL pointer */
 
 /*! ZSTD_compressCCtx() :
  *  Same as ZSTD_compress(), using an explicit ZSTD_CCtx.
@@ -269,7 +277,7 @@ ZSTDLIB_API size_t     ZSTD_freeCCtx(ZSTD_CCtx* cctx);  /* accept NULL pointer *
  *  this function compresses at the requested compression level,
  *  __ignoring any other advanced parameter__ .
  *  If any advanced parameter was set using the advanced API,
- *  they will all be reset. Only `compressionLevel` remains.
+ *  they will all be reset. Only @compressionLevel remains.
  */
 ZSTDLIB_API size_t ZSTD_compressCCtx(ZSTD_CCtx* cctx,
                                      void* dst, size_t dstCapacity,
@@ -1206,6 +1214,8 @@ ZSTDLIB_API size_t ZSTD_sizeof_DDict(const ZSTD_DDict* ddict);
 
 #if defined(ZSTD_STATIC_LINKING_ONLY) && !defined(ZSTD_H_ZSTD_STATIC_LINKING_ONLY)
 #define ZSTD_H_ZSTD_STATIC_LINKING_ONLY
+
+#include <limits.h>   /* INT_MAX */
 
 /* This can be overridden externally to hide static symbols. */
 #ifndef ZSTDLIB_STATIC_API
