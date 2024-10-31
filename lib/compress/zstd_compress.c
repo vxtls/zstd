@@ -598,7 +598,7 @@ ZSTD_bounds ZSTD_cParam_getBounds(ZSTD_cParameter param)
         bounds.upperBound = 1;
         return bounds;
 
-    case ZSTD_c_useBlockSplitter:
+    case ZSTD_c_splitAfterSequences:
         bounds.lowerBound = (int)ZSTD_ps_auto;
         bounds.upperBound = (int)ZSTD_ps_disable;
         return bounds;
@@ -701,7 +701,7 @@ static int ZSTD_isUpdateAuthorized(ZSTD_cParameter param)
     case ZSTD_c_stableOutBuffer:
     case ZSTD_c_blockDelimiters:
     case ZSTD_c_validateSequences:
-    case ZSTD_c_useBlockSplitter:
+    case ZSTD_c_splitAfterSequences:
     case ZSTD_c_useRowMatchFinder:
     case ZSTD_c_deterministicRefPrefix:
     case ZSTD_c_prefetchCDictTables:
@@ -760,7 +760,7 @@ size_t ZSTD_CCtx_setParameter(ZSTD_CCtx* cctx, ZSTD_cParameter param, int value)
     case ZSTD_c_stableOutBuffer:
     case ZSTD_c_blockDelimiters:
     case ZSTD_c_validateSequences:
-    case ZSTD_c_useBlockSplitter:
+    case ZSTD_c_splitAfterSequences:
     case ZSTD_c_blockSplitterLevel:
     case ZSTD_c_useRowMatchFinder:
     case ZSTD_c_deterministicRefPrefix:
@@ -982,8 +982,8 @@ size_t ZSTD_CCtxParams_setParameter(ZSTD_CCtx_params* CCtxParams,
         CCtxParams->validateSequences = value;
         return (size_t)CCtxParams->validateSequences;
 
-    case ZSTD_c_useBlockSplitter:
-        BOUNDCHECK(ZSTD_c_useBlockSplitter, value);
+    case ZSTD_c_splitAfterSequences:
+        BOUNDCHECK(ZSTD_c_splitAfterSequences, value);
         CCtxParams->postBlockSplitter = (ZSTD_paramSwitch_e)value;
         return CCtxParams->postBlockSplitter;
 
@@ -1147,7 +1147,7 @@ size_t ZSTD_CCtxParams_getParameter(
     case ZSTD_c_validateSequences :
         *value = (int)CCtxParams->validateSequences;
         break;
-    case ZSTD_c_useBlockSplitter :
+    case ZSTD_c_splitAfterSequences :
         *value = (int)CCtxParams->postBlockSplitter;
         break;
     case ZSTD_c_blockSplitterLevel :

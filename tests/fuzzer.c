@@ -1420,7 +1420,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
         CHECK_Z(ZSTD_CCtx_setParameter(cctx, ZSTD_c_compressionLevel, 19));
         CHECK_Z(ZSTD_CCtx_setParameter(cctx, ZSTD_c_minMatch, 7));
-        CHECK_Z(ZSTD_CCtx_setParameter(cctx, ZSTD_c_useBlockSplitter, ZSTD_ps_enable));
+        CHECK_Z(ZSTD_CCtx_setParameter(cctx, ZSTD_c_splitAfterSequences, ZSTD_ps_enable));
 
         cSize = ZSTD_compress2(cctx, compressedBuffer, compressedBufferSize, data, srcSize);
         CHECK_Z(cSize);
@@ -1737,8 +1737,8 @@ static int basicUnitTests(U32 const seed, double compressibility)
     {   ZSTD_CCtx* const cctx = ZSTD_createCCtx();
         int value;
         ZSTD_compressionParameters cparams = ZSTD_getCParams(1, 0, 0);
-        cparams.strategy = -1;
-        /* Set invalid cParams == no change. */
+        cparams.strategy = (ZSTD_strategy)-1; /* set invalid value, on purpose */
+        /* Set invalid cParams == error out, and no change. */
         CHECK(ZSTD_isError(ZSTD_CCtx_setCParams(cctx, cparams)));
 
         CHECK_Z(ZSTD_CCtx_getParameter(cctx, ZSTD_c_windowLog, &value));
@@ -1801,12 +1801,12 @@ static int basicUnitTests(U32 const seed, double compressibility)
         ZSTD_freeCCtx(cctx);
     }
 
-    DISPLAYLEVEL(3, "test%3d : ZSTD_CCtx_setCarams() : ", testNb++);
+    DISPLAYLEVEL(3, "test%3d : ZSTD_CCtx_setParams() : ", testNb++);
     {   ZSTD_CCtx* const cctx = ZSTD_createCCtx();
         int value;
         ZSTD_parameters params = ZSTD_getParams(1, 0, 0);
-        params.cParams.strategy = -1;
-        /* Set invalid params == no change. */
+        params.cParams.strategy = (ZSTD_strategy)-1; /* set invalid value, on purpose */
+        /* Set invalid params == error out, and no change. */
         CHECK(ZSTD_isError(ZSTD_CCtx_setParams(cctx, params)));
 
         CHECK_Z(ZSTD_CCtx_getParameter(cctx, ZSTD_c_windowLog, &value));
@@ -2252,7 +2252,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
     DISPLAYLEVEL(3, "test%3i : compress with block splitting : ", testNb++)
     {   ZSTD_CCtx* cctx = ZSTD_createCCtx();
-        CHECK_Z( ZSTD_CCtx_setParameter(cctx, ZSTD_c_useBlockSplitter, ZSTD_ps_enable) );
+        CHECK_Z( ZSTD_CCtx_setParameter(cctx, ZSTD_c_splitAfterSequences, ZSTD_ps_enable) );
         cSize = ZSTD_compress2(cctx, compressedBuffer, compressedBufferSize, CNBuffer, CNBuffSize);
         CHECK_Z(cSize);
         ZSTD_freeCCtx(cctx);
