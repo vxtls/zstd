@@ -218,7 +218,7 @@ ZSTDLIB_API size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize)
 
 /*======  Compression helper functions  ======*/
 
-/* ZSTD_compressBound() :
+/*! ZSTD_compressBound() :
  * maximum compressed size in worst case single-pass scenario.
  * When invoking `ZSTD_compress()`, or any other one-pass compression function,
  * it's recommended to provide @dstCapacity >= ZSTD_compressBound(srcSize)
