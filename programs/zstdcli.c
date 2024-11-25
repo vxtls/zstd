@@ -696,7 +696,7 @@ static void printDefaultCParams(const char* filename, const char* dictFileName, 
     unsigned long long fileSize = UTIL_getFileSize(filename);
     const size_t dictSize = dictFileName != NULL ? (size_t)UTIL_getFileSize(dictFileName) : 0;
     const ZSTD_compressionParameters cParams = ZSTD_getCParams(cLevel, fileSize, dictSize);
-    if (fileSize != UTIL_FILESIZE_UNKNOWN) DISPLAY("%s (%u bytes)\n", filename, (unsigned)fileSize);
+    if (fileSize != UTIL_FILESIZE_UNKNOWN) DISPLAY("%s (%llu bytes)\n", filename, fileSize);
     else DISPLAY("%s (src size unknown)\n", filename);
     DISPLAY(" - windowLog     : %u\n", cParams.windowLog);
     DISPLAY(" - chainLog      : %u\n", cParams.chainLog);
