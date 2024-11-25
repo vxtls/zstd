@@ -224,7 +224,7 @@ ZSTDLIB_API size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize)
  * it's recommended to provide @dstCapacity >= ZSTD_compressBound(srcSize)
  * as it eliminates one potential failure scenario,
  * aka not enough room in dst buffer to write the compressed frame.
- * Note : ZSTD_compressBound() itself can fail, if @srcSize > ZSTD_MAX_INPUT_SIZE .
+ * Note : ZSTD_compressBound() itself can fail, if @srcSize >= ZSTD_MAX_INPUT_SIZE .
  *        In which case, ZSTD_compressBound() will return an error code
  *        which can be tested using ZSTD_isError().
  *
