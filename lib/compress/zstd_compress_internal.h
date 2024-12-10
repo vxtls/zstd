@@ -404,7 +404,7 @@ struct ZSTD_CCtx_params_s {
     ZSTD_bufferMode_e outBufferMode;
 
     /* Sequence compression API */
-    ZSTD_sequenceFormat_e blockDelimiters;
+    ZSTD_SequenceFormat_e blockDelimiters;
     int validateSequences;
 
     /* Block splitting

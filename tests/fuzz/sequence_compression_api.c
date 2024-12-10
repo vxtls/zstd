@@ -76,7 +76,7 @@ static char* generatePseudoRandomString(char* str, size_t size, FUZZ_dataProduce
 static size_t decodeSequences(void* dst, size_t nbSequences,
                               size_t literalsSize,
                               const void* dict, size_t dictSize,
-                              ZSTD_sequenceFormat_e mode)
+                              ZSTD_SequenceFormat_e mode)
 {
     const uint8_t* litPtr = literalsBuffer;
     const uint8_t* const litBegin = literalsBuffer;
@@ -141,7 +141,7 @@ static size_t decodeSequences(void* dst, size_t nbSequences,
  */
 static size_t generateRandomSequences(FUZZ_dataProducer_t* producer,
                                       size_t literalsSizeLimit, size_t dictSize,
-                                      size_t windowLog, ZSTD_sequenceFormat_e mode)
+                                      size_t windowLog, ZSTD_SequenceFormat_e mode)
 {
     const uint32_t repCode = 0;  /* not used by sequence ingestion api */
     size_t windowSize = 1ULL << windowLog;
@@ -232,7 +232,7 @@ static size_t roundTripTest(void* result, size_t resultCapacity,
                             const void* src, size_t srcSize,
                             const ZSTD_Sequence* seqs, size_t seqSize,
                             unsigned hasDict,
-                            ZSTD_sequenceFormat_e mode)
+                            ZSTD_SequenceFormat_e mode)
 {
     size_t cSize;
     size_t dSize;
@@ -276,7 +276,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* src, size_t size)
     unsigned hasDict;
     unsigned wLog;
     int cLevel;
-    ZSTD_sequenceFormat_e mode;
+    ZSTD_SequenceFormat_e mode;
 
     FUZZ_dataProducer_t* const producer = FUZZ_dataProducer_create(src, size);
     FUZZ_ASSERT(producer);
@@ -293,7 +293,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* src, size_t size)
     /* Generate window log first so we don't generate offsets too large */
     wLog = FUZZ_dataProducer_uint32Range(producer, ZSTD_WINDOWLOG_MIN, ZSTD_WINDOWLOG_MAX);
     cLevel = FUZZ_dataProducer_int32Range(producer, -3, 22);
-    mode = (ZSTD_sequenceFormat_e)FUZZ_dataProducer_int32Range(producer, 0, 1);
+    mode = (ZSTD_SequenceFormat_e)FUZZ_dataProducer_int32Range(producer, 0, 1);
 
     ZSTD_CCtx_reset(cctx, ZSTD_reset_session_and_parameters);
     ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, 0);
