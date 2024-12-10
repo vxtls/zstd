@@ -48,7 +48,7 @@
  * in log format, aka 17 => 1 << 17 == 128Ki positions.
  * This structure is only used in zstd_opt.
  * Since allocation is centralized for all strategies, it has to be known here.
- * The actual (selected) size of the hash table is then stored in ZSTD_matchState_t.hashLog3,
+ * The actual (selected) size of the hash table is then stored in ZSTD_MatchState_t.hashLog3,
  * so that zstd_opt.c doesn't need to know about this constant.
  */
 #ifndef ZSTD_HASHLOG3_MAX
@@ -82,7 +82,7 @@ struct ZSTD_CDict_s {
     ZSTD_dictContentType_e dictContentType; /* The dictContentType the CDict was created with */
     U32* entropyWorkspace; /* entropy workspace of HUF_WORKSPACE_SIZE bytes */
     ZSTD_cwksp workspace;
-    ZSTD_matchState_t matchState;
+    ZSTD_MatchState_t matchState;
     ZSTD_compressedBlockState_t cBlockState;
     ZSTD_customMem customMem;
     U32 dictID;
@@ -1938,7 +1938,7 @@ void ZSTD_reset_compressedBlockState(ZSTD_compressedBlockState_t* bs)
  *  Invalidate all the matches in the match finder tables.
  *  Requires nextSrc and base to be set (can be NULL).
  */
-static void ZSTD_invalidateMatchState(ZSTD_matchState_t* ms)
+static void ZSTD_invalidateMatchState(ZSTD_MatchState_t* ms)
 {
     ZSTD_window_clear(&ms->window);
 
@@ -1985,12 +1985,12 @@ static U64 ZSTD_bitmix(U64 val, U64 len) {
 }
 
 /* Mixes in the hashSalt and hashSaltEntropy to create a new hashSalt */
-static void ZSTD_advanceHashSalt(ZSTD_matchState_t* ms) {
+static void ZSTD_advanceHashSalt(ZSTD_MatchState_t* ms) {
     ms->hashSalt = ZSTD_bitmix(ms->hashSalt, 8) ^ ZSTD_bitmix((U64) ms->hashSaltEntropy, 4);
 }
 
 static size_t
-ZSTD_reset_matchState(ZSTD_matchState_t* ms,
+ZSTD_reset_matchState(ZSTD_MatchState_t* ms,
                       ZSTD_cwksp* ws,
                 const ZSTD_compressionParameters* cParams,
                 const ZSTD_paramSwitch_e useRowMatchFinder,
@@ -2473,8 +2473,8 @@ static size_t ZSTD_resetCCtx_byCopyingCDict(ZSTD_CCtx* cctx,
     ZSTD_cwksp_mark_tables_clean(&cctx->workspace);
 
     /* copy dictionary offsets */
-    {   ZSTD_matchState_t const* srcMatchState = &cdict->matchState;
-        ZSTD_matchState_t* dstMatchState = &cctx->blockState.matchState;
+    {   ZSTD_MatchState_t const* srcMatchState = &cdict->matchState;
+        ZSTD_MatchState_t* dstMatchState = &cctx->blockState.matchState;
         dstMatchState->window       = srcMatchState->window;
         dstMatchState->nextToUpdate = srcMatchState->nextToUpdate;
         dstMatchState->loadedDictEnd= srcMatchState->loadedDictEnd;
@@ -2576,8 +2576,8 @@ static size_t ZSTD_copyCCtx_internal(ZSTD_CCtx* dstCCtx,
 
     /* copy dictionary offsets */
     {
-        const ZSTD_matchState_t* srcMatchState = &srcCCtx->blockState.matchState;
-        ZSTD_matchState_t* dstMatchState = &dstCCtx->blockState.matchState;
+        const ZSTD_MatchState_t* srcMatchState = &srcCCtx->blockState.matchState;
+        ZSTD_MatchState_t* dstMatchState = &dstCCtx->blockState.matchState;
         dstMatchState->window       = srcMatchState->window;
         dstMatchState->nextToUpdate = srcMatchState->nextToUpdate;
         dstMatchState->loadedDictEnd= srcMatchState->loadedDictEnd;
@@ -2671,7 +2671,7 @@ static void ZSTD_reduceTable_btlazy2(U32* const table, U32 const size, U32 const
 
 /*! ZSTD_reduceIndex() :
 *   rescale all indexes to avoid future overflow (indexes are U32) */
-static void ZSTD_reduceIndex (ZSTD_matchState_t* ms, ZSTD_CCtx_params const* params, const U32 reducerValue)
+static void ZSTD_reduceIndex (ZSTD_MatchState_t* ms, ZSTD_CCtx_params const* params, const U32 reducerValue)
 {
     {   U32 const hSize = (U32)1 << params->cParams.hashLog;
         ZSTD_reduceTable(ms->hashTable, hSize, reducerValue);
@@ -3246,17 +3246,17 @@ typedef struct {
 } ZSTD_SequencePosition;
 
 static size_t
-ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
-                                              ZSTD_SequencePosition* seqPos,
-                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                        const void* src, size_t blockSize,
-                                        ZSTD_paramSwitch_e externalRepSearch);
+ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
+                                   ZSTD_SequencePosition* seqPos,
+                             const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
+                             const void* src, size_t blockSize,
+                                   ZSTD_paramSwitch_e externalRepSearch);
 
 typedef enum { ZSTDbss_compress, ZSTDbss_noCompress } ZSTD_BuildSeqStore_e;
 
 static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
 {
-    ZSTD_matchState_t* const ms = &zc->blockState.matchState;
+    ZSTD_MatchState_t* const ms = &zc->blockState.matchState;
     DEBUGLOG(5, "ZSTD_buildSeqStore (srcSize=%zu)", srcSize);
     assert(srcSize <= ZSTD_BLOCKSIZE_MAX);
     /* Assert that we have correctly flushed the ctx params into the ms's copy */
@@ -3372,7 +3372,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
                     size_t const seqLenSum = ZSTD_fastSequenceLengthSum(zc->extSeqBuf, nbPostProcessedSeqs);
                     RETURN_ERROR_IF(seqLenSum > srcSize, externalSequences_invalid, "External sequences imply too large a block!");
                     FORWARD_IF_ERROR(
-                        ZSTD_copySequencesToSeqStoreExplicitBlockDelim(
+                        ZSTD_transferSequences_wBlockDelim(
                             zc, &seqPos,
                             zc->extSeqBuf, nbPostProcessedSeqs,
                             src, srcSize,
@@ -4515,7 +4515,7 @@ static size_t ZSTD_compressBlock_targetCBlockSize(ZSTD_CCtx* zc,
     return cSize;
 }
 
-static void ZSTD_overflowCorrectIfNeeded(ZSTD_matchState_t* ms,
+static void ZSTD_overflowCorrectIfNeeded(ZSTD_MatchState_t* ms,
                                          ZSTD_cwksp* ws,
                                          ZSTD_CCtx_params const* params,
                                          void const* ip,
@@ -4600,7 +4600,7 @@ static size_t ZSTD_compress_frameChunk(ZSTD_CCtx* cctx,
         XXH64_update(&cctx->xxhState, src, srcSize);
 
     while (remaining) {
-        ZSTD_matchState_t* const ms = &cctx->blockState.matchState;
+        ZSTD_MatchState_t* const ms = &cctx->blockState.matchState;
         size_t const blockSize = ZSTD_optimalBlockSize(cctx,
                                 ip, remaining,
                                 blockSizeMax,
@@ -4784,7 +4784,7 @@ static size_t ZSTD_compressContinue_internal (ZSTD_CCtx* cctx,
                         const void* src, size_t srcSize,
                                U32 frame, U32 lastFrameChunk)
 {
-    ZSTD_matchState_t* const ms = &cctx->blockState.matchState;
+    ZSTD_MatchState_t* const ms = &cctx->blockState.matchState;
     size_t fhSize = 0;
 
     DEBUGLOG(5, "ZSTD_compressContinue_internal, stage: %u, srcSize: %u",
@@ -4888,7 +4888,7 @@ size_t ZSTD_compressBlock(ZSTD_CCtx* cctx, void* dst, size_t dstCapacity, const 
 /*! ZSTD_loadDictionaryContent() :
  *  @return : 0, or an error code
  */
-static size_t ZSTD_loadDictionaryContent(ZSTD_matchState_t* ms,
+static size_t ZSTD_loadDictionaryContent(ZSTD_MatchState_t* ms,
                                          ldmState_t* ls,
                                          ZSTD_cwksp* ws,
                                          ZSTD_CCtx_params const* params,
@@ -5146,7 +5146,7 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
  *                dictSize supposed >= 8
  */
 static size_t ZSTD_loadZstdDictionary(ZSTD_compressedBlockState_t* bs,
-                                      ZSTD_matchState_t* ms,
+                                      ZSTD_MatchState_t* ms,
                                       ZSTD_cwksp* ws,
                                       ZSTD_CCtx_params const* params,
                                       const void* dict, size_t dictSize,
@@ -5179,7 +5179,7 @@ static size_t ZSTD_loadZstdDictionary(ZSTD_compressedBlockState_t* bs,
 *   @return : dictID, or an error code */
 static size_t
 ZSTD_compress_insertDictionary(ZSTD_compressedBlockState_t* bs,
-                               ZSTD_matchState_t* ms,
+                               ZSTD_MatchState_t* ms,
                                ldmState_t* ls,
                                ZSTD_cwksp* ws,
                          const ZSTD_CCtx_params* params,
@@ -6621,7 +6621,7 @@ static U32 ZSTD_finalizeOffBase(U32 rawOffset, const U32 rep[ZSTD_REP_NUM], U32 
  * @returns 0 on success, and a ZSTD_error otherwise.
  */
 static size_t
-ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
+ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
                                                ZSTD_SequencePosition* seqPos,
                                          const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                          const void* src, size_t blockSize,
@@ -6634,7 +6634,7 @@ ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
     repcodes_t updatedRepcodes;
     U32 dictSize;
 
-    DEBUGLOG(5, "ZSTD_copySequencesToSeqStoreExplicitBlockDelim (blockSize = %zu)", blockSize);
+    DEBUGLOG(5, "ZSTD_transferSequences_wBlockDelim (blockSize = %zu)", blockSize);
 
     if (cctx->cdict) {
         dictSize = (U32)cctx->cdict->dictContentSize;
@@ -6852,7 +6852,7 @@ static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mod
 {
     assert(ZSTD_cParam_withinBounds(ZSTD_c_blockDelimiters, (int)mode));
     if (mode == ZSTD_sf_explicitBlockDelimiters) {
-        return ZSTD_copySequencesToSeqStoreExplicitBlockDelim;
+        return ZSTD_transferSequences_wBlockDelim;
     }
     assert(mode == ZSTD_sf_noBlockDelimiters);
     return ZSTD_copySequencesToSeqStoreNoBlockDelim;

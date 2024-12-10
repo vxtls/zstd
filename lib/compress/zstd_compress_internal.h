@@ -269,11 +269,11 @@ typedef struct {
 
 #define ZSTD_WINDOW_START_INDEX 2
 
-typedef struct ZSTD_matchState_t ZSTD_matchState_t;
+typedef struct ZSTD_MatchState_t ZSTD_MatchState_t;
 
 #define ZSTD_ROW_HASH_CACHE_SIZE 8       /* Size of prefetching hash cache for row-based matchfinder */
 
-struct ZSTD_matchState_t {
+struct ZSTD_MatchState_t {
     ZSTD_window_t window;   /* State for window round buffer management */
     U32 loadedDictEnd;      /* index of end of dictionary, within context's referential.
                              * When loadedDictEnd != 0, a dictionary is in use, and still valid.
@@ -301,7 +301,7 @@ struct ZSTD_matchState_t {
                                * dedicated dictionary search structure.
                                */
     optState_t opt;         /* optimal parser state */
-    const ZSTD_matchState_t* dictMatchState;
+    const ZSTD_MatchState_t* dictMatchState;
     ZSTD_compressionParameters cParams;
     const rawSeqStore_t* ldmSeqStore;
 
@@ -321,7 +321,7 @@ struct ZSTD_matchState_t {
 typedef struct {
     ZSTD_compressedBlockState_t* prevCBlock;
     ZSTD_compressedBlockState_t* nextCBlock;
-    ZSTD_matchState_t matchState;
+    ZSTD_MatchState_t matchState;
 } ZSTD_blockState_t;
 
 typedef struct {
@@ -580,7 +580,7 @@ typedef enum {
 } ZSTD_cParamMode_e;
 
 typedef size_t (*ZSTD_blockCompressor) (
-        ZSTD_matchState_t* bs, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_MatchState_t* bs, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         void const* src, size_t srcSize);
 ZSTD_blockCompressor ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramSwitch_e rowMatchfinderMode, ZSTD_dictMode_e dictMode);
 
@@ -1081,7 +1081,7 @@ MEM_STATIC U32 ZSTD_window_hasExtDict(ZSTD_window_t const window)
  * Inspects the provided matchState and figures out what dictMode should be
  * passed to the compressor.
  */
-MEM_STATIC ZSTD_dictMode_e ZSTD_matchState_dictMode(const ZSTD_matchState_t *ms)
+MEM_STATIC ZSTD_dictMode_e ZSTD_matchState_dictMode(const ZSTD_MatchState_t *ms)
 {
     return ZSTD_window_hasExtDict(ms->window) ?
         ZSTD_extDict :
@@ -1270,7 +1270,7 @@ ZSTD_window_enforceMaxDist(ZSTD_window_t* window,
                      const void* blockEnd,
                            U32   maxDist,
                            U32*  loadedDictEndPtr,
-                     const ZSTD_matchState_t** dictMatchStatePtr)
+                     const ZSTD_MatchState_t** dictMatchStatePtr)
 {
     U32 const blockEndIdx = (U32)((BYTE const*)blockEnd - window->base);
     U32 const loadedDictEnd = (loadedDictEndPtr != NULL) ? *loadedDictEndPtr : 0;
@@ -1315,7 +1315,7 @@ ZSTD_checkDictValidity(const ZSTD_window_t* window,
                        const void* blockEnd,
                              U32   maxDist,
                              U32*  loadedDictEndPtr,
-                       const ZSTD_matchState_t** dictMatchStatePtr)
+                       const ZSTD_MatchState_t** dictMatchStatePtr)
 {
     assert(loadedDictEndPtr != NULL);
     assert(dictMatchStatePtr != NULL);
@@ -1405,7 +1405,7 @@ U32 ZSTD_window_update(ZSTD_window_t* window,
 /**
  * Returns the lowest allowed match index. It may either be in the ext-dict or the prefix.
  */
-MEM_STATIC U32 ZSTD_getLowestMatchIndex(const ZSTD_matchState_t* ms, U32 curr, unsigned windowLog)
+MEM_STATIC U32 ZSTD_getLowestMatchIndex(const ZSTD_MatchState_t* ms, U32 curr, unsigned windowLog)
 {
     U32 const maxDistance = 1U << windowLog;
     U32 const lowestValid = ms->window.lowLimit;
@@ -1422,7 +1422,7 @@ MEM_STATIC U32 ZSTD_getLowestMatchIndex(const ZSTD_matchState_t* ms, U32 curr, u
 /**
  * Returns the lowest allowed match index in the prefix.
  */
-MEM_STATIC U32 ZSTD_getLowestPrefixIndex(const ZSTD_matchState_t* ms, U32 curr, unsigned windowLog)
+MEM_STATIC U32 ZSTD_getLowestPrefixIndex(const ZSTD_MatchState_t* ms, U32 curr, unsigned windowLog)
 {
     U32    const maxDistance = 1U << windowLog;
     U32    const lowestValid = ms->window.dictLimit;
