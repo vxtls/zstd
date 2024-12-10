@@ -215,12 +215,6 @@ typedef struct {
   size_t capacity;      /* The capacity starting from `seq` pointer */
 } rawSeqStore_t;
 
-typedef struct {
-    U32 idx;            /* Index in array of ZSTD_Sequence */
-    U32 posInSequence;  /* Position within sequence at idx */
-    size_t posInSrc;    /* Number of bytes given by sequences provided so far */
-} ZSTD_sequencePosition;
-
 UNUSED_ATTR static const rawSeqStore_t kNullRawSeqStore = {NULL, 0, 0, 0, 0};
 
 typedef struct {

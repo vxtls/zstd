@@ -3239,9 +3239,15 @@ static size_t ZSTD_fastSequenceLengthSum(ZSTD_Sequence const* seqBuf, size_t seq
     return litLenSum + matchLenSum;
 }
 
+typedef struct {
+    U32 idx;            /* Index in array of ZSTD_Sequence */
+    U32 posInSequence;  /* Position within sequence at idx */
+    size_t posInSrc;    /* Number of bytes given by sequences provided so far */
+} ZSTD_SequencePosition;
+
 static size_t
 ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
-                                              ZSTD_sequencePosition* seqPos,
+                                              ZSTD_SequencePosition* seqPos,
                                         const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                         const void* src, size_t blockSize,
                                         ZSTD_paramSwitch_e externalRepSearch);
@@ -3362,7 +3368,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
 
                 /* Return early if there is no error, since we don't need to worry about last literals */
                 if (!ZSTD_isError(nbPostProcessedSeqs)) {
-                    ZSTD_sequencePosition seqPos = {0,0,0};
+                    ZSTD_SequencePosition seqPos = {0,0,0};
                     size_t const seqLenSum = ZSTD_fastSequenceLengthSum(zc->extSeqBuf, nbPostProcessedSeqs);
                     RETURN_ERROR_IF(seqLenSum > srcSize, externalSequences_invalid, "External sequences imply too large a block!");
                     FORWARD_IF_ERROR(
@@ -5079,7 +5085,7 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
 
     {   short matchlengthNCount[MaxML+1];
         unsigned matchlengthMaxValue = MaxML, matchlengthLog;
-        size_t const matchlengthHeaderSize = FSE_readNCount(matchlengthNCount, &matchlengthMaxValue, &matchlengthLog, dictPtr, dictEnd-dictPtr);
+        size_t const matchlengthHeaderSize = FSE_readNCount(matchlengthNCount, &matchlengthMaxValue, &matchlengthLog, dictPtr, (size_t)(dictEnd-dictPtr));
         RETURN_ERROR_IF(FSE_isError(matchlengthHeaderSize), dictionary_corrupted, "");
         RETURN_ERROR_IF(matchlengthLog > MLFSELog, dictionary_corrupted, "");
         RETURN_ERROR_IF(FSE_isError(FSE_buildCTable_wksp(
@@ -6123,12 +6129,13 @@ static size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
 
         case zcss_load:
             if ( (flushMode == ZSTD_e_end)
-              && ( (size_t)(oend-op) >= ZSTD_compressBound(iend-ip)     /* Enough output space */
+              && ( (size_t)(oend-op) >= ZSTD_compressBound((size_t)(iend-ip))     /* Enough output space */
                 || zcs->appliedParams.outBufferMode == ZSTD_bm_stable)  /* OR we are allowed to return dstSizeTooSmall */
               && (zcs->inBuffPos == 0) ) {
                 /* shortcut to compression pass directly into output buffer */
                 size_t const cSize = ZSTD_compressEnd_public(zcs,
-                                                op, oend-op, ip, iend-ip);
+                                                op, (size_t)(oend-op),
+                                                ip, (size_t)(iend-ip));
                 DEBUGLOG(4, "ZSTD_compressEnd : cSize=%u", (unsigned)cSize);
                 FORWARD_IF_ERROR(cSize, "ZSTD_compressEnd failed");
                 ip = iend;
@@ -6142,7 +6149,7 @@ static size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
                 size_t const toLoad = zcs->inBuffTarget - zcs->inBuffPos;
                 size_t const loaded = ZSTD_limitCopy(
                                         zcs->inBuff + zcs->inBuffPos, toLoad,
-                                        ip, iend-ip);
+                                        ip, (size_t)(iend-ip));
                 zcs->inBuffPos += loaded;
                 if (ip) ip += loaded;
                 if ( (flushMode == ZSTD_e_continue)
@@ -6175,7 +6182,7 @@ static size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
             {   int const inputBuffered = (zcs->appliedParams.inBufferMode == ZSTD_bm_buffered);
                 void* cDst;
                 size_t cSize;
-                size_t oSize = oend-op;
+                size_t oSize = (size_t)(oend-op);
                 size_t const iSize = inputBuffered ? zcs->inBuffPos - zcs->inToCompress
                                                    : MIN((size_t)(iend - ip), zcs->blockSize);
                 if (oSize >= ZSTD_compressBound(iSize) || zcs->appliedParams.outBufferMode == ZSTD_bm_stable)
@@ -6258,8 +6265,8 @@ static size_t ZSTD_compressStream_generic(ZSTD_CStream* zcs,
         }
     }
 
-    input->pos = ip - istart;
-    output->pos = op - ostart;
+    input->pos = (size_t)(ip - istart);
+    output->pos = (size_t)(op - ostart);
     if (zcs->frameEnded) return 0;
     return ZSTD_nextInputSizeHint(zcs);
 }
@@ -6608,16 +6615,17 @@ static U32 ZSTD_finalizeOffBase(U32 rawOffset, const U32 rep[ZSTD_REP_NUM], U32 
     return offBase;
 }
 
-/* Returns 0 on success, and a ZSTD_error otherwise. This function scans through an array of
- * ZSTD_Sequence, storing the sequences it finds, until it reaches a block delimiter.
+/* This function scans through an array of ZSTD_Sequence,
+ * storing the sequences it reads, until it reaches a block delimiter.
  * Note that the block delimiter must include the last literals of the block.
+ * @returns 0 on success, and a ZSTD_error otherwise.
  */
 static size_t
 ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
-                                              ZSTD_sequencePosition* seqPos,
-                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                        const void* src, size_t blockSize,
-                                        ZSTD_paramSwitch_e externalRepSearch)
+                                               ZSTD_SequencePosition* seqPos,
+                                         const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
+                                         const void* src, size_t blockSize,
+                                               ZSTD_paramSwitch_e externalRepSearch)
 {
     U32 idx = seqPos->idx;
     U32 const startIdx = idx;
@@ -6652,8 +6660,10 @@ ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
         DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
         if (cctx->appliedParams.validateSequences) {
             seqPos->posInSrc += litLength + matchLength;
-            FORWARD_IF_ERROR(ZSTD_validateSequence(offBase, matchLength, cctx->appliedParams.cParams.minMatch, seqPos->posInSrc,
-                                                cctx->appliedParams.cParams.windowLog, dictSize, ZSTD_hasExtSeqProd(&cctx->appliedParams)),
+            FORWARD_IF_ERROR(ZSTD_validateSequence(offBase, matchLength, cctx->appliedParams.cParams.minMatch,
+                                                seqPos->posInSrc,
+                                                cctx->appliedParams.cParams.windowLog, dictSize,
+                                                ZSTD_hasExtSeqProd(&cctx->appliedParams)),
                                                 "Sequence validation failed");
         }
         RETURN_ERROR_IF(idx - seqPos->idx >= cctx->seqStore.maxNbSeq, externalSequences_invalid,
@@ -6712,7 +6722,7 @@ ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
  */
 static size_t
 ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
-                                         ZSTD_sequencePosition* seqPos,
+                                         ZSTD_SequencePosition* seqPos,
                                    const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                    const void* src, size_t blockSize,
                                          ZSTD_paramSwitch_e externalRepSearch)
@@ -6835,7 +6845,7 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
     return bytesAdjustment;
 }
 
-typedef size_t (*ZSTD_SequenceCopier_f) (ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
+typedef size_t (*ZSTD_SequenceCopier_f) (ZSTD_CCtx* cctx, ZSTD_SequencePosition* seqPos,
                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                        const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
 static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mode)
@@ -6853,7 +6863,7 @@ static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mod
  * otherwise it's an input error.
  * The block size retrieved will be later compared to ensure it remains within bounds */
 static size_t
-blockSize_explicitDelimiter(const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_sequencePosition seqPos)
+blockSize_explicitDelimiter(const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_SequencePosition seqPos)
 {
     int end = 0;
     size_t blockSize = 0;
@@ -6884,7 +6894,7 @@ static size_t blockSize_noDelimiter(size_t blockSize, size_t remaining)
 
 static size_t determine_blockSize(ZSTD_SequenceFormat_e mode,
                            size_t blockSize, size_t remaining,
-                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_sequencePosition seqPos)
+                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_SequencePosition seqPos)
 {
     DEBUGLOG(6, "determine_blockSize : remainingSize = %zu", remaining);
     if (mode == ZSTD_sf_noBlockDelimiters)
@@ -6912,7 +6922,7 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
 {
     size_t cSize = 0;
     size_t remaining = srcSize;
-    ZSTD_sequencePosition seqPos = {0, 0, 0};
+    ZSTD_SequencePosition seqPos = {0, 0, 0};
 
     BYTE const* ip = (BYTE const*)src;
     BYTE* op = (BYTE*)dst;
