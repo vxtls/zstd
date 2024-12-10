@@ -2826,7 +2826,7 @@ ZSTD_buildSequencesStatistics(
         size_t const mostFrequent = HIST_countFast_wksp(
             countWorkspace, &max, ofCodeTable, nbSeq, entropyWorkspace, entropyWkspSize);  /* can't fail */
         /* We can only use the basic table if max <= DefaultMaxOff, otherwise the offsets are too large */
-        ZSTD_defaultPolicy_e const defaultPolicy = (max <= DefaultMaxOff) ? ZSTD_defaultAllowed : ZSTD_defaultDisallowed;
+        ZSTD_DefaultPolicy_e const defaultPolicy = (max <= DefaultMaxOff) ? ZSTD_defaultAllowed : ZSTD_defaultDisallowed;
         DEBUGLOG(5, "Building OF table");
         nextEntropy->offcode_repeatMode = prevEntropy->offcode_repeatMode;
         stats.Offtype = ZSTD_selectEncodingType(&nextEntropy->offcode_repeatMode,
