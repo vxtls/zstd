@@ -65,7 +65,7 @@ size_t ZSTD_ldm_generateSequences(
  * NOTE: This function does not return any errors.
  */
 size_t ZSTD_ldm_blockCompress(rawSeqStore_t* rawSeqStore,
-            ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+            ZSTD_MatchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
             ZSTD_paramSwitch_e useRowMatchFinder,
             void const* src, size_t srcSize);
 
