@@ -671,6 +671,57 @@ ZSTD_safecopyLiterals(BYTE* op, BYTE const* ip, BYTE const* const iend, BYTE con
 #define OFFBASE_TO_OFFSET(o)  (assert(OFFBASE_IS_OFFSET(o)), (o) - ZSTD_REP_NUM)
 #define OFFBASE_TO_REPCODE(o) (assert(OFFBASE_IS_REPCODE(o)), (o))  /* returns ID 1,2,3 */
 
+/*! ZSTD_storeSeqOnly() :
+ *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
+ *  Literals themselves are not copied, but @litPtr is updated.
+ *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
+ *  @matchLength : must be >= MINMATCH
+*/
+HINT_INLINE UNUSED_ATTR void
+ZSTD_storeSeqOnly(seqStore_t* seqStorePtr,
+              size_t litLength,
+              U32 offBase,
+              size_t matchLength)
+{
+#if defined(DEBUGLEVEL) && (DEBUGLEVEL >= 6)
+    static const BYTE* g_start = NULL;
+    if (g_start==NULL) g_start = (const BYTE*)literals;  /* note : index only works for compression within a single segment */
+    {   U32 const pos = (U32)((const BYTE*)literals - g_start);
+        DEBUGLOG(6, "Cpos%7u :%3u literals, match%4u bytes at offBase%7u",
+               pos, (U32)litLength, (U32)matchLength, (U32)offBase);
+    }
+#endif
+    assert((size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart) < seqStorePtr->maxNbSeq);
+    /* update seqStorePtr->lit, so that we know how many literals were or will be copied */
+    assert(seqStorePtr->maxNbLit <= 128 KB);
+    assert(seqStorePtr->lit + litLength <= seqStorePtr->litStart + seqStorePtr->maxNbLit);
+    seqStorePtr->lit += litLength;
+
+    /* literal Length */
+    if (litLength>0xFFFF) {
+        assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
+        seqStorePtr->longLengthType = ZSTD_llt_literalLength;
+        seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+    }
+    seqStorePtr->sequences[0].litLength = (U16)litLength;
+
+    /* match offset */
+    seqStorePtr->sequences[0].offBase = offBase;
+
+    /* match Length */
+    assert(matchLength >= MINMATCH);
+    {   size_t const mlBase = matchLength - MINMATCH;
+        if (mlBase>0xFFFF) {
+            assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
+            seqStorePtr->longLengthType = ZSTD_llt_matchLength;
+            seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
+        }
+        seqStorePtr->sequences[0].mlBase = (U16)mlBase;
+    }
+
+    seqStorePtr->sequences++;
+}
+
 /*! ZSTD_storeSeq() :
  *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
  *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
@@ -710,31 +761,8 @@ ZSTD_storeSeq(seqStore_t* seqStorePtr,
     } else {
         ZSTD_safecopyLiterals(seqStorePtr->lit, literals, litEnd, litLimit_w);
     }
-    seqStorePtr->lit += litLength;
 
-    /* literal Length */
-    if (litLength>0xFFFF) {
-        assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
-        seqStorePtr->longLengthType = ZSTD_llt_literalLength;
-        seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
-    }
-    seqStorePtr->sequences[0].litLength = (U16)litLength;
-
-    /* match offset */
-    seqStorePtr->sequences[0].offBase = offBase;
-
-    /* match Length */
-    assert(matchLength >= MINMATCH);
-    {   size_t const mlBase = matchLength - MINMATCH;
-        if (mlBase>0xFFFF) {
-            assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
-            seqStorePtr->longLengthType = ZSTD_llt_matchLength;
-            seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
-        }
-        seqStorePtr->sequences[0].mlBase = (U16)mlBase;
-    }
-
-    seqStorePtr->sequences++;
+    ZSTD_storeSeqOnly(seqStorePtr, litLength, offBase, matchLength);
 }
 
 /* ZSTD_updateRep() :
