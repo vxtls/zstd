@@ -86,11 +86,11 @@ typedef struct {
 /***********************************************
 *  Sequences *
 ***********************************************/
-typedef struct seqDef_s {
+typedef struct SeqDef_s {
     U32 offBase;   /* offBase == Offset + ZSTD_REP_NUM, or repcode 1,2,3 */
     U16 litLength;
     U16 mlBase;    /* mlBase == matchLength - MINMATCH */
-} seqDef;
+} SeqDef;
 
 /* Controls whether seqStore has a single "long" litLength or matchLength. See seqStore_t. */
 typedef enum {
@@ -100,8 +100,8 @@ typedef enum {
 } ZSTD_longLengthType_e;
 
 typedef struct {
-    seqDef* sequencesStart;
-    seqDef* sequences;      /* ptr to end of sequences */
+    SeqDef* sequencesStart;
+    SeqDef* sequences;      /* ptr to end of sequences */
     BYTE*  litStart;
     BYTE*  lit;             /* ptr to end of literals */
     BYTE*  llCode;
@@ -127,7 +127,7 @@ typedef struct {
  * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
  * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
  */
-MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t const* seqStore, seqDef const* seq)
+MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t const* seqStore, SeqDef const* seq)
 {
     ZSTD_sequenceLength seqLen;
     seqLen.litLength = seq->litLength;

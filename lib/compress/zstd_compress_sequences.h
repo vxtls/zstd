@@ -11,7 +11,7 @@
 #ifndef ZSTD_COMPRESS_SEQUENCES_H
 #define ZSTD_COMPRESS_SEQUENCES_H
 
-#include "zstd_compress_internal.h" /* seqDef */
+#include "zstd_compress_internal.h" /* SeqDef */
 #include "../common/fse.h" /* FSE_repeat, FSE_CTable */
 #include "../common/zstd_internal.h" /* symbolEncodingType_e, ZSTD_strategy */
 
@@ -43,7 +43,7 @@ size_t ZSTD_encodeSequences(
             FSE_CTable const* CTable_MatchLength, BYTE const* mlCodeTable,
             FSE_CTable const* CTable_OffsetBits, BYTE const* ofCodeTable,
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
-            seqDef const* sequences, size_t nbSeq, int longOffsets, int bmi2);
+            SeqDef const* sequences, size_t nbSeq, int longOffsets, int bmi2);
 
 size_t ZSTD_fseBitCost(
     FSE_CTable const* ctable,

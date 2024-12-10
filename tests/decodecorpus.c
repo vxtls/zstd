@@ -182,7 +182,7 @@ BYTE CONTENT_BUFFER[MAX_DECOMPRESSED_SIZE];
 BYTE FRAME_BUFFER[MAX_DECOMPRESSED_SIZE * 2];
 BYTE LITERAL_BUFFER[ZSTD_BLOCKSIZE_MAX];
 
-seqDef SEQUENCE_BUFFER[MAX_NB_SEQ];
+SeqDef SEQUENCE_BUFFER[MAX_NB_SEQ];
 BYTE SEQUENCE_LITERAL_BUFFER[ZSTD_BLOCKSIZE_MAX]; /* storeSeq expects a place to copy literals to */
 BYTE SEQUENCE_LLCODE[ZSTD_BLOCKSIZE_MAX];
 BYTE SEQUENCE_MLCODE[ZSTD_BLOCKSIZE_MAX];
@@ -842,7 +842,7 @@ static size_t writeSequences(U32* seed, frame_t* frame, seqStore_t* seqStorePtr,
     FSE_CTable* CTable_OffsetBits = frame->stats.offcodeCTable;
     FSE_CTable* CTable_MatchLength = frame->stats.matchlengthCTable;
     U32 LLtype, Offtype, MLtype;   /* compressed, raw or rle */
-    const seqDef* const sequences = seqStorePtr->sequencesStart;
+    const SeqDef* const sequences = seqStorePtr->sequencesStart;
     const BYTE* const ofCodeTable = seqStorePtr->ofCode;
     const BYTE* const llCodeTable = seqStorePtr->llCode;
     const BYTE* const mlCodeTable = seqStorePtr->mlCode;

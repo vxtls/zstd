@@ -1722,7 +1722,7 @@ static size_t ZSTD_estimateCCtxSize_usingCCtxParams_internal(
     size_t const blockSize = MIN(ZSTD_resolveMaxBlockSize(maxBlockSize), windowSize);
     size_t const maxNbSeq = ZSTD_maxNbSeq(blockSize, cParams->minMatch, useSequenceProducer);
     size_t const tokenSpace = ZSTD_cwksp_alloc_size(WILDCOPY_OVERLENGTH + blockSize)
-                            + ZSTD_cwksp_aligned64_alloc_size(maxNbSeq * sizeof(seqDef))
+                            + ZSTD_cwksp_aligned64_alloc_size(maxNbSeq * sizeof(SeqDef))
                             + 3 * ZSTD_cwksp_alloc_size(maxNbSeq * sizeof(BYTE));
     size_t const tmpWorkSpace = ZSTD_cwksp_alloc_size(TMP_WORKSPACE_SIZE);
     size_t const blockStateSpace = 2 * ZSTD_cwksp_alloc_size(sizeof(ZSTD_compressedBlockState_t));
@@ -2224,7 +2224,7 @@ static size_t ZSTD_resetCCtx_internal(ZSTD_CCtx* zc,
                 needsIndexReset,
                 ZSTD_resetTarget_CCtx), "");
 
-        zc->seqStore.sequencesStart = (seqDef*)ZSTD_cwksp_reserve_aligned64(ws, maxNbSeq * sizeof(seqDef));
+        zc->seqStore.sequencesStart = (SeqDef*)ZSTD_cwksp_reserve_aligned64(ws, maxNbSeq * sizeof(SeqDef));
 
         /* ldm hash table */
         if (params->ldmParams.enableLdm == ZSTD_ps_enable) {
@@ -2700,7 +2700,7 @@ static void ZSTD_reduceIndex (ZSTD_matchState_t* ms, ZSTD_CCtx_params const* par
 
 int ZSTD_seqToCodes(const seqStore_t* seqStorePtr)
 {
-    const seqDef* const sequences = seqStorePtr->sequencesStart;
+    const SeqDef* const sequences = seqStorePtr->sequencesStart;
     BYTE* const llCodeTable = seqStorePtr->llCode;
     BYTE* const ofCodeTable = seqStorePtr->ofCode;
     BYTE* const mlCodeTable = seqStorePtr->mlCode;
@@ -2907,7 +2907,7 @@ ZSTD_entropyCompressSeqStore_internal(
     FSE_CTable* CTable_LitLength = nextEntropy->fse.litlengthCTable;
     FSE_CTable* CTable_OffsetBits = nextEntropy->fse.offcodeCTable;
     FSE_CTable* CTable_MatchLength = nextEntropy->fse.matchlengthCTable;
-    const seqDef* const sequences = seqStorePtr->sequencesStart;
+    const SeqDef* const sequences = seqStorePtr->sequencesStart;
     const size_t nbSeq = (size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
     const BYTE* const ofCodeTable = seqStorePtr->ofCode;
     const BYTE* const llCodeTable = seqStorePtr->llCode;
@@ -3385,7 +3385,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
 
 static size_t ZSTD_copyBlockSequences(SeqCollector* seqCollector, const seqStore_t* seqStore, const U32 prevRepcodes[ZSTD_REP_NUM])
 {
-    const seqDef* inSeqs = seqStore->sequencesStart;
+    const SeqDef* inSeqs = seqStore->sequencesStart;
     const size_t nbInSequences = seqStore->sequences - inSeqs;
     const size_t nbInLiterals = (size_t)(seqStore->lit - seqStore->litStart);
 
@@ -3929,7 +3929,7 @@ static size_t ZSTD_countSeqStoreLiteralsBytes(const seqStore_t* const seqStore)
     size_t const nbSeqs = (size_t)(seqStore->sequences - seqStore->sequencesStart);
     size_t i;
     for (i = 0; i < nbSeqs; ++i) {
-        seqDef const seq = seqStore->sequencesStart[i];
+        SeqDef const seq = seqStore->sequencesStart[i];
         literalsBytes += seq.litLength;
         if (i == seqStore->longLengthPos && seqStore->longLengthType == ZSTD_llt_literalLength) {
             literalsBytes += 0x10000;
@@ -3944,7 +3944,7 @@ static size_t ZSTD_countSeqStoreMatchBytes(const seqStore_t* const seqStore)
     size_t const nbSeqs = (size_t)(seqStore->sequences - seqStore->sequencesStart);
     size_t i;
     for (i = 0; i < nbSeqs; ++i) {
-        seqDef seq = seqStore->sequencesStart[i];
+        SeqDef seq = seqStore->sequencesStart[i];
         matchBytes += seq.mlBase + MINMATCH;
         if (i == seqStore->longLengthPos && seqStore->longLengthType == ZSTD_llt_matchLength) {
             matchBytes += 0x10000;
@@ -4030,7 +4030,7 @@ ZSTD_seqStore_resolveOffCodes(repcodes_t* const dRepcodes, repcodes_t* const cRe
     U32 idx = 0;
     U32 const longLitLenIdx = seqStore->longLengthType == ZSTD_llt_literalLength ? seqStore->longLengthPos : nbSeq;
     for (; idx < nbSeq; ++idx) {
-        seqDef* const seq = seqStore->sequencesStart + idx;
+        SeqDef* const seq = seqStore->sequencesStart + idx;
         U32 const ll0 = (seq->litLength == 0) && (idx != longLitLenIdx);
         U32 const offBase = seq->offBase;
         assert(offBase > 0);
