@@ -310,7 +310,7 @@ static int FUZ_mallocTests(unsigned seed, double compressibility, unsigned part)
 #endif
 
 static void FUZ_decodeSequences(BYTE* dst, ZSTD_Sequence* seqs, size_t seqsSize,
-                                BYTE* src, size_t size, ZSTD_sequenceFormat_e format)
+                                BYTE* src, size_t size, ZSTD_SequenceFormat_e format)
 {
     size_t i;
     size_t j;

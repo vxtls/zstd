@@ -974,7 +974,7 @@ size_t ZSTD_CCtxParams_setParameter(ZSTD_CCtx_params* CCtxParams,
 
     case ZSTD_c_blockDelimiters:
         BOUNDCHECK(ZSTD_c_blockDelimiters, value);
-        CCtxParams->blockDelimiters = (ZSTD_sequenceFormat_e)value;
+        CCtxParams->blockDelimiters = (ZSTD_SequenceFormat_e)value;
         return CCtxParams->blockDelimiters;
 
     case ZSTD_c_validateSequences:
@@ -6815,10 +6815,10 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
 typedef size_t (*ZSTD_sequenceCopier) (ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                        const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
-static ZSTD_sequenceCopier ZSTD_selectSequenceCopier(ZSTD_sequenceFormat_e mode)
+static ZSTD_sequenceCopier ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mode)
 {
     ZSTD_sequenceCopier sequenceCopier = NULL;
-    assert(ZSTD_cParam_withinBounds(ZSTD_c_blockDelimiters, mode));
+    assert(ZSTD_cParam_withinBounds(ZSTD_c_blockDelimiters, (int)mode));
     if (mode == ZSTD_sf_explicitBlockDelimiters) {
         return ZSTD_copySequencesToSeqStoreExplicitBlockDelim;
     } else if (mode == ZSTD_sf_noBlockDelimiters) {
@@ -6862,7 +6862,7 @@ static size_t blockSize_noDelimiter(size_t blockSize, size_t remaining)
     return lastBlock ? remaining : blockSize;
 }
 
-static size_t determine_blockSize(ZSTD_sequenceFormat_e mode,
+static size_t determine_blockSize(ZSTD_SequenceFormat_e mode,
                            size_t blockSize, size_t remaining,
                      const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_sequencePosition seqPos)
 {
@@ -6941,11 +6941,13 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         }
 
         RETURN_ERROR_IF(dstCapacity < ZSTD_blockHeaderSize, dstSize_tooSmall, "not enough dstCapacity to write a new compressed block");
-        compressedSeqsSize = ZSTD_entropyCompressSeqStore(&cctx->seqStore,
+        compressedSeqsSize = ZSTD_entropyCompressSeqStore_wExtLitBuffer(
+                                op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
+                                cctx->seqStore.litStart, (size_t)(cctx->seqStore.lit - cctx->seqStore.litStart),
+                                blockSize,
+                                &cctx->seqStore,
                                 &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy,
                                 &cctx->appliedParams,
-                                op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
-                                blockSize,
                                 cctx->tmpWorkspace, cctx->tmpWkspSize /* statically allocated in resetCCtx */,
                                 cctx->bmi2);
         FORWARD_IF_ERROR(compressedSeqsSize, "Compressing sequences of block failed");
