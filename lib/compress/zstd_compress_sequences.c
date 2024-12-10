@@ -159,7 +159,7 @@ ZSTD_selectEncodingType(
         size_t const mostFrequent, size_t nbSeq, unsigned const FSELog,
         FSE_CTable const* prevCTable,
         short const* defaultNorm, U32 defaultNormLog,
-        ZSTD_defaultPolicy_e const isDefaultAllowed,
+        ZSTD_DefaultPolicy_e const isDefaultAllowed,
         ZSTD_strategy const strategy)
 {
     ZSTD_STATIC_ASSERT(ZSTD_defaultDisallowed == 0 && ZSTD_defaultAllowed != 0);

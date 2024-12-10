@@ -18,7 +18,7 @@
 typedef enum {
     ZSTD_defaultDisallowed = 0,
     ZSTD_defaultAllowed = 1
-} ZSTD_defaultPolicy_e;
+} ZSTD_DefaultPolicy_e;
 
 SymbolEncodingType_e
 ZSTD_selectEncodingType(
@@ -26,7 +26,7 @@ ZSTD_selectEncodingType(
         size_t const mostFrequent, size_t nbSeq, unsigned const FSELog,
         FSE_CTable const* prevCTable,
         short const* defaultNorm, U32 defaultNormLog,
-        ZSTD_defaultPolicy_e const isDefaultAllowed,
+        ZSTD_DefaultPolicy_e const isDefaultAllowed,
         ZSTD_strategy const strategy);
 
 size_t
