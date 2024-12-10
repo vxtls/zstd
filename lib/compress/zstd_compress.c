@@ -6909,7 +6909,7 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         if (blockSize < MIN_CBLOCK_SIZE+ZSTD_blockHeaderSize+1+1) {
             cBlockSize = ZSTD_noCompressBlock(op, dstCapacity, ip, blockSize, lastBlock);
             FORWARD_IF_ERROR(cBlockSize, "Nocompress block failed");
-            DEBUGLOG(5, "Block too small, writing out nocompress block: cSize: %zu", cBlockSize);
+            DEBUGLOG(5, "Block too small (%zu): data remains uncompressed: cSize=%zu", blockSize, cBlockSize);
             cSize += cBlockSize;
             ip += blockSize;
             op += cBlockSize;
