@@ -1039,7 +1039,7 @@ size_t ZSTD_CCtxParams_getParameter(
     switch(param)
     {
     case ZSTD_c_format :
-        *value = CCtxParams->format;
+        *value = (int)CCtxParams->format;
         break;
     case ZSTD_c_compressionLevel :
         *value = CCtxParams->compressionLevel;
@@ -1054,16 +1054,16 @@ size_t ZSTD_CCtxParams_getParameter(
         *value = (int)CCtxParams->cParams.chainLog;
         break;
     case ZSTD_c_searchLog :
-        *value = CCtxParams->cParams.searchLog;
+        *value = (int)CCtxParams->cParams.searchLog;
         break;
     case ZSTD_c_minMatch :
-        *value = CCtxParams->cParams.minMatch;
+        *value = (int)CCtxParams->cParams.minMatch;
         break;
     case ZSTD_c_targetLength :
-        *value = CCtxParams->cParams.targetLength;
+        *value = (int)CCtxParams->cParams.targetLength;
         break;
     case ZSTD_c_strategy :
-        *value = (unsigned)CCtxParams->cParams.strategy;
+        *value = (int)CCtxParams->cParams.strategy;
         break;
     case ZSTD_c_contentSizeFlag :
         *value = CCtxParams->fParams.contentSizeFlag;
@@ -1078,10 +1078,10 @@ size_t ZSTD_CCtxParams_getParameter(
         *value = CCtxParams->forceWindow;
         break;
     case ZSTD_c_forceAttachDict :
-        *value = CCtxParams->attachDictPref;
+        *value = (int)CCtxParams->attachDictPref;
         break;
     case ZSTD_c_literalCompressionMode :
-        *value = CCtxParams->literalCompressionMode;
+        *value = (int)CCtxParams->literalCompressionMode;
         break;
     case ZSTD_c_nbWorkers :
 #ifndef ZSTD_MULTITHREAD
@@ -1115,19 +1115,19 @@ size_t ZSTD_CCtxParams_getParameter(
         *value = CCtxParams->enableDedicatedDictSearch;
         break;
     case ZSTD_c_enableLongDistanceMatching :
-        *value = CCtxParams->ldmParams.enableLdm;
+        *value = (int)CCtxParams->ldmParams.enableLdm;
         break;
     case ZSTD_c_ldmHashLog :
-        *value = CCtxParams->ldmParams.hashLog;
+        *value = (int)CCtxParams->ldmParams.hashLog;
         break;
     case ZSTD_c_ldmMinMatch :
-        *value = CCtxParams->ldmParams.minMatchLength;
+        *value = (int)CCtxParams->ldmParams.minMatchLength;
         break;
     case ZSTD_c_ldmBucketSizeLog :
-        *value = CCtxParams->ldmParams.bucketSizeLog;
+        *value = (int)CCtxParams->ldmParams.bucketSizeLog;
         break;
     case ZSTD_c_ldmHashRateLog :
-        *value = CCtxParams->ldmParams.hashRateLog;
+        *value = (int)CCtxParams->ldmParams.hashRateLog;
         break;
     case ZSTD_c_targetCBlockSize :
         *value = (int)CCtxParams->targetCBlockSize;
@@ -1401,7 +1401,7 @@ size_t ZSTD_checkCParams(ZSTD_compressionParameters cParams)
     BOUNDCHECK(ZSTD_c_searchLog, (int)cParams.searchLog);
     BOUNDCHECK(ZSTD_c_minMatch,  (int)cParams.minMatch);
     BOUNDCHECK(ZSTD_c_targetLength,(int)cParams.targetLength);
-    BOUNDCHECK(ZSTD_c_strategy,  cParams.strategy);
+    BOUNDCHECK(ZSTD_c_strategy,  (int)cParams.strategy);
     return 0;
 }
 
@@ -2558,7 +2558,7 @@ static size_t ZSTD_copyCCtx_internal(ZSTD_CCtx* dstCCtx,
                                     ? ((size_t)1 << srcCCtx->appliedParams.cParams.chainLog)
                                     : 0;
         size_t const hSize =  (size_t)1 << srcCCtx->appliedParams.cParams.hashLog;
-        int const h3log = srcCCtx->blockState.matchState.hashLog3;
+        U32 const h3log = srcCCtx->blockState.matchState.hashLog3;
         size_t const h3Size = h3log ? ((size_t)1 << h3log) : 0;
 
         ZSTD_memcpy(dstCCtx->blockState.matchState.hashTable,
@@ -3011,19 +3011,20 @@ ZSTD_entropyCompressSeqStore_internal(
 }
 
 static size_t
-ZSTD_entropyCompressSeqStore(
+ZSTD_entropyCompressSeqStore_wExtLitBuffer(
+                          void* dst, size_t dstCapacity,
+                    const void* literals, size_t litSize,
+                          size_t srcSize,
                     const SeqStore_t* seqStorePtr,
                     const ZSTD_entropyCTables_t* prevEntropy,
                           ZSTD_entropyCTables_t* nextEntropy,
                     const ZSTD_CCtx_params* cctxParams,
-                          void* dst, size_t dstCapacity,
-                          size_t srcSize,
                           void* entropyWorkspace, size_t entropyWkspSize,
                           int bmi2)
 {
     size_t const cSize = ZSTD_entropyCompressSeqStore_internal(
                             dst, dstCapacity,
-                            seqStorePtr->litStart, (size_t)(seqStorePtr->lit - seqStorePtr->litStart),
+                            literals, litSize,
                             seqStorePtr, prevEntropy, nextEntropy, cctxParams,
                             entropyWorkspace, entropyWkspSize, bmi2);
     if (cSize == 0) return 0;
@@ -3046,6 +3047,28 @@ ZSTD_entropyCompressSeqStore(
      */
     assert(cSize < ZSTD_BLOCKSIZE_MAX);
     return cSize;
+}
+
+static size_t
+ZSTD_entropyCompressSeqStore(
+                    const SeqStore_t* seqStorePtr,
+                    const ZSTD_entropyCTables_t* prevEntropy,
+                          ZSTD_entropyCTables_t* nextEntropy,
+                    const ZSTD_CCtx_params* cctxParams,
+                          void* dst, size_t dstCapacity,
+                          size_t srcSize,
+                          void* entropyWorkspace, size_t entropyWkspSize,
+                          int bmi2)
+{
+    return ZSTD_entropyCompressSeqStore_wExtLitBuffer(
+                dst, dstCapacity,
+                seqStorePtr->litStart, (size_t)(seqStorePtr->lit - seqStorePtr->litStart),
+                srcSize,
+                seqStorePtr,
+                prevEntropy, nextEntropy,
+                cctxParams,
+                entropyWorkspace, entropyWkspSize,
+                bmi2);
 }
 
 /* ZSTD_selectBlockCompressor() :
@@ -3101,7 +3124,7 @@ ZSTD_blockCompressor ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramS
     ZSTD_blockCompressor selectedCompressor;
     ZSTD_STATIC_ASSERT((unsigned)ZSTD_fast == 1);
 
-    assert(ZSTD_cParam_withinBounds(ZSTD_c_strategy, strat));
+    assert(ZSTD_cParam_withinBounds(ZSTD_c_strategy, (int)strat));
     DEBUGLOG(4, "Selected block compressor: dictMode=%d strat=%d rowMatchfinder=%d", (int)dictMode, (int)strat, (int)useRowMatchFinder);
     if (ZSTD_rowMatchFinderUsed(strat, useRowMatchFinder)) {
         static const ZSTD_blockCompressor rowBasedBlockCompressors[4][3] = {
@@ -3385,7 +3408,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
 static size_t ZSTD_copyBlockSequences(SeqCollector* seqCollector, const SeqStore_t* seqStore, const U32 prevRepcodes[ZSTD_REP_NUM])
 {
     const SeqDef* inSeqs = seqStore->sequencesStart;
-    const size_t nbInSequences = seqStore->sequences - inSeqs;
+    const size_t nbInSequences = (size_t)(seqStore->sequences - inSeqs);
     const size_t nbInLiterals = (size_t)(seqStore->lit - seqStore->litStart);
 
     ZSTD_Sequence* outSeqs = seqCollector->seqIndex == 0 ? seqCollector->seqStart : seqCollector->seqStart + seqCollector->seqIndex;
@@ -6931,10 +6954,10 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         if (!cctx->isFirstBlock &&
             ZSTD_maybeRLE(&cctx->seqStore) &&
             ZSTD_isRLE(ip, blockSize)) {
-            /* We don't want to emit our first block as a RLE even if it qualifies because
-            * doing so will cause the decoder (cli only) to throw a "should consume all input error."
-            * This is only an issue for zstd <= v1.4.3
-            */
+            /* We don't want to emit our first block as RLE even if it qualifies because
+             * doing so will cause the decoder (cli <= v1.4.3 only) to throw an (invalid) error
+             * "should consume all input error."
+             */
             compressedSeqsSize = 1;
         }
 
