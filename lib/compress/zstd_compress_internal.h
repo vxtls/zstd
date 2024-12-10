@@ -92,7 +92,7 @@ typedef struct SeqDef_s {
     U16 mlBase;    /* mlBase == matchLength - MINMATCH */
 } SeqDef;
 
-/* Controls whether seqStore has a single "long" litLength or matchLength. See seqStore_t. */
+/* Controls whether seqStore has a single "long" litLength or matchLength. See SeqStore_t. */
 typedef enum {
     ZSTD_llt_none = 0,             /* no longLengthType */
     ZSTD_llt_literalLength = 1,    /* represents a long literal */
@@ -116,7 +116,7 @@ typedef struct {
      */
     ZSTD_longLengthType_e longLengthType;
     U32                   longLengthPos;  /* Index of the sequence to apply long length modification to */
-} seqStore_t;
+} SeqStore_t;
 
 typedef struct {
     U32 litLength;
@@ -127,7 +127,7 @@ typedef struct {
  * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
  * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
  */
-MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t const* seqStore, SeqDef const* seq)
+MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(SeqStore_t const* seqStore, SeqDef const* seq)
 {
     ZSTD_sequenceLength seqLen;
     seqLen.litLength = seq->litLength;
@@ -143,8 +143,8 @@ MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t const* seqStore
     return seqLen;
 }
 
-const seqStore_t* ZSTD_getSeqStore(const ZSTD_CCtx* ctx);   /* compress & dictBuilder */
-int ZSTD_seqToCodes(const seqStore_t* seqStorePtr);   /* compress, dictBuilder, decodeCorpus (shouldn't get its definition from here) */
+const SeqStore_t* ZSTD_getSeqStore(const ZSTD_CCtx* ctx);   /* compress & dictBuilder */
+int ZSTD_seqToCodes(const SeqStore_t* seqStorePtr);   /* compress, dictBuilder, decodeCorpus (shouldn't get its definition from here) */
 
 
 /***********************************************
@@ -184,7 +184,7 @@ typedef struct {
  *  Builds entropy for the block.
  *  @return : 0 on success or error code */
 size_t ZSTD_buildBlockEntropyStats(
-                    const seqStore_t* seqStorePtr,
+                    const SeqStore_t* seqStorePtr,
                     const ZSTD_entropyCTables_t* prevEntropy,
                           ZSTD_entropyCTables_t* nextEntropy,
                     const ZSTD_CCtx_params* cctxParams,
@@ -469,11 +469,11 @@ typedef enum {
  */
 #define ZSTD_MAX_NB_BLOCK_SPLITS 196
 typedef struct {
-    seqStore_t fullSeqStoreChunk;
-    seqStore_t firstHalfSeqStore;
-    seqStore_t secondHalfSeqStore;
-    seqStore_t currSeqStore;
-    seqStore_t nextSeqStore;
+    SeqStore_t fullSeqStoreChunk;
+    SeqStore_t firstHalfSeqStore;
+    SeqStore_t secondHalfSeqStore;
+    SeqStore_t currSeqStore;
+    SeqStore_t nextSeqStore;
 
     U32 partitions[ZSTD_MAX_NB_BLOCK_SPLITS];
     ZSTD_entropyCTablesMetadata_t entropyMetadata;
@@ -502,7 +502,7 @@ struct ZSTD_CCtx_s {
     int isFirstBlock;
     int initialized;
 
-    seqStore_t seqStore;      /* sequences storage ptrs */
+    SeqStore_t seqStore;      /* sequences storage ptrs */
     ldmState_t ldmState;      /* long distance matching state */
     rawSeq* ldmSequences;     /* Storage for the ldm output sequences */
     size_t maxNbLdmSequences;
@@ -586,7 +586,7 @@ typedef enum {
 } ZSTD_cParamMode_e;
 
 typedef size_t (*ZSTD_blockCompressor) (
-        ZSTD_matchState_t* bs, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* bs, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         void const* src, size_t srcSize);
 ZSTD_blockCompressor ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramSwitch_e rowMatchfinderMode, ZSTD_dictMode_e dictMode);
 
@@ -736,13 +736,13 @@ ZSTD_safecopyLiterals(BYTE* op, BYTE const* ip, BYTE const* const iend, BYTE con
 #define OFFBASE_TO_REPCODE(o) (assert(OFFBASE_IS_REPCODE(o)), (o))  /* returns ID 1,2,3 */
 
 /*! ZSTD_storeSeqOnly() :
- *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
+ *  Store a sequence (litlen, litPtr, offBase and matchLength) into SeqStore_t.
  *  Literals themselves are not copied, but @litPtr is updated.
  *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
  *  @matchLength : must be >= MINMATCH
 */
 HINT_INLINE UNUSED_ATTR void
-ZSTD_storeSeqOnly(seqStore_t* seqStorePtr,
+ZSTD_storeSeqOnly(SeqStore_t* seqStorePtr,
               size_t litLength,
               U32 offBase,
               size_t matchLength)
@@ -787,13 +787,13 @@ ZSTD_storeSeqOnly(seqStore_t* seqStorePtr,
 }
 
 /*! ZSTD_storeSeq() :
- *  Store a sequence (litlen, litPtr, offBase and matchLength) into seqStore_t.
+ *  Store a sequence (litlen, litPtr, offBase and matchLength) into SeqStore_t.
  *  @offBase : Users should employ macros REPCODE_TO_OFFBASE() and OFFSET_TO_OFFBASE().
  *  @matchLength : must be >= MINMATCH
  *  Allowed to over-read literals up to litLimit.
 */
 HINT_INLINE UNUSED_ATTR void
-ZSTD_storeSeq(seqStore_t* seqStorePtr,
+ZSTD_storeSeq(SeqStore_t* seqStorePtr,
               size_t litLength, const BYTE* literals, const BYTE* litLimit,
               U32 offBase,
               size_t matchLength)
@@ -1560,7 +1560,7 @@ size_t ZSTD_initCStream_internal(ZSTD_CStream* zcs,
                      const ZSTD_CDict* cdict,
                      const ZSTD_CCtx_params* params, unsigned long long pledgedSrcSize);
 
-void ZSTD_resetSeqStore(seqStore_t* ssPtr);
+void ZSTD_resetSeqStore(SeqStore_t* ssPtr);
 
 /*! ZSTD_getCParamsFromCDict() :
  *  as the name implies */

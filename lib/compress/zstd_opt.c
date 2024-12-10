@@ -1073,7 +1073,7 @@ FORCE_INLINE_TEMPLATE
 ZSTD_ALLOW_POINTER_OVERFLOW_ATTR
 size_t
 ZSTD_compressBlock_opt_generic(ZSTD_matchState_t* ms,
-                               seqStore_t* seqStore,
+                               SeqStore_t* seqStore,
                                U32 rep[ZSTD_REP_NUM],
                          const void* src, size_t srcSize,
                          const int optLevel,
@@ -1440,7 +1440,7 @@ _shortestPath:   /* cur, last_pos, best_mlen, best_off have to be set */
 
 #ifndef ZSTD_EXCLUDE_BTOPT_BLOCK_COMPRESSOR
 static size_t ZSTD_compressBlock_opt0(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize, const ZSTD_dictMode_e dictMode)
 {
     return ZSTD_compressBlock_opt_generic(ms, seqStore, rep, src, srcSize, 0 /* optLevel */, dictMode);
@@ -1449,7 +1449,7 @@ static size_t ZSTD_compressBlock_opt0(
 
 #ifndef ZSTD_EXCLUDE_BTULTRA_BLOCK_COMPRESSOR
 static size_t ZSTD_compressBlock_opt2(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize, const ZSTD_dictMode_e dictMode)
 {
     return ZSTD_compressBlock_opt_generic(ms, seqStore, rep, src, srcSize, 2 /* optLevel */, dictMode);
@@ -1458,7 +1458,7 @@ static size_t ZSTD_compressBlock_opt2(
 
 #ifndef ZSTD_EXCLUDE_BTOPT_BLOCK_COMPRESSOR
 size_t ZSTD_compressBlock_btopt(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     DEBUGLOG(5, "ZSTD_compressBlock_btopt");
@@ -1478,7 +1478,7 @@ size_t ZSTD_compressBlock_btopt(
 static
 ZSTD_ALLOW_POINTER_OVERFLOW_ATTR
 void ZSTD_initStats_ultra(ZSTD_matchState_t* ms,
-                          seqStore_t* seqStore,
+                          SeqStore_t* seqStore,
                           U32 rep[ZSTD_REP_NUM],
                     const void* src, size_t srcSize)
 {
@@ -1503,7 +1503,7 @@ void ZSTD_initStats_ultra(ZSTD_matchState_t* ms,
 }
 
 size_t ZSTD_compressBlock_btultra(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     DEBUGLOG(5, "ZSTD_compressBlock_btultra (srcSize=%zu)", srcSize);
@@ -1511,7 +1511,7 @@ size_t ZSTD_compressBlock_btultra(
 }
 
 size_t ZSTD_compressBlock_btultra2(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     U32 const curr = (U32)((const BYTE*)src - ms->window.base);
@@ -1541,14 +1541,14 @@ size_t ZSTD_compressBlock_btultra2(
 
 #ifndef ZSTD_EXCLUDE_BTOPT_BLOCK_COMPRESSOR
 size_t ZSTD_compressBlock_btopt_dictMatchState(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_dictMatchState);
 }
 
 size_t ZSTD_compressBlock_btopt_extDict(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     return ZSTD_compressBlock_opt0(ms, seqStore, rep, src, srcSize, ZSTD_extDict);
@@ -1557,14 +1557,14 @@ size_t ZSTD_compressBlock_btopt_extDict(
 
 #ifndef ZSTD_EXCLUDE_BTULTRA_BLOCK_COMPRESSOR
 size_t ZSTD_compressBlock_btultra_dictMatchState(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_dictMatchState);
 }
 
 size_t ZSTD_compressBlock_btultra_extDict(
-        ZSTD_matchState_t* ms, seqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
+        ZSTD_matchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         const void* src, size_t srcSize)
 {
     return ZSTD_compressBlock_opt2(ms, seqStore, rep, src, srcSize, ZSTD_extDict);
