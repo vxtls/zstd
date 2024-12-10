@@ -2805,7 +2805,7 @@ ZSTD_buildSequencesStatistics(
         assert(!(stats.LLtype < set_compressed && nextEntropy->litlength_repeatMode != FSE_repeat_none)); /* We don't copy tables */
         {   size_t const countSize = ZSTD_buildCTable(
                 op, (size_t)(oend - op),
-                CTable_LitLength, LLFSELog, (symbolEncodingType_e)stats.LLtype,
+                CTable_LitLength, LLFSELog, (SymbolEncodingType_e)stats.LLtype,
                 countWorkspace, max, llCodeTable, nbSeq,
                 LL_defaultNorm, LL_defaultNormLog, MaxLL,
                 prevEntropy->litlengthCTable,
@@ -2837,7 +2837,7 @@ ZSTD_buildSequencesStatistics(
         assert(!(stats.Offtype < set_compressed && nextEntropy->offcode_repeatMode != FSE_repeat_none)); /* We don't copy tables */
         {   size_t const countSize = ZSTD_buildCTable(
                 op, (size_t)(oend - op),
-                CTable_OffsetBits, OffFSELog, (symbolEncodingType_e)stats.Offtype,
+                CTable_OffsetBits, OffFSELog, (SymbolEncodingType_e)stats.Offtype,
                 countWorkspace, max, ofCodeTable, nbSeq,
                 OF_defaultNorm, OF_defaultNormLog, DefaultMaxOff,
                 prevEntropy->offcodeCTable,
@@ -2867,7 +2867,7 @@ ZSTD_buildSequencesStatistics(
         assert(!(stats.MLtype < set_compressed && nextEntropy->matchlength_repeatMode != FSE_repeat_none)); /* We don't copy tables */
         {   size_t const countSize = ZSTD_buildCTable(
                 op, (size_t)(oend - op),
-                CTable_MatchLength, MLFSELog, (symbolEncodingType_e)stats.MLtype,
+                CTable_MatchLength, MLFSELog, (SymbolEncodingType_e)stats.MLtype,
                 countWorkspace, max, mlCodeTable, nbSeq,
                 ML_defaultNorm, ML_defaultNormLog, MaxML,
                 prevEntropy->matchlengthCTable,
@@ -3738,9 +3738,9 @@ ZSTD_buildBlockEntropyStats_sequences(
                                           entropyWorkspace, entropyWorkspaceSize)
                        : ZSTD_buildDummySequencesStatistics(nextEntropy);
     FORWARD_IF_ERROR(stats.size, "ZSTD_buildSequencesStatistics failed!");
-    fseMetadata->llType = (symbolEncodingType_e) stats.LLtype;
-    fseMetadata->ofType = (symbolEncodingType_e) stats.Offtype;
-    fseMetadata->mlType = (symbolEncodingType_e) stats.MLtype;
+    fseMetadata->llType = (SymbolEncodingType_e) stats.LLtype;
+    fseMetadata->ofType = (SymbolEncodingType_e) stats.Offtype;
+    fseMetadata->mlType = (SymbolEncodingType_e) stats.MLtype;
     fseMetadata->lastCountSize = stats.lastCountSize;
     return stats.size;
 }
@@ -3811,7 +3811,7 @@ ZSTD_estimateBlockSize_literal(const BYTE* literals, size_t litSize,
 
 /* Returns the size estimate for the FSE-compressed symbols (of, ml, ll) of a block */
 static size_t
-ZSTD_estimateBlockSize_symbolType(symbolEncodingType_e type,
+ZSTD_estimateBlockSize_symbolType(SymbolEncodingType_e type,
                     const BYTE* codeTable, size_t nbSeq, unsigned maxCode,
                     const FSE_CTable* fseCTable,
                     const U8* additionalBits,

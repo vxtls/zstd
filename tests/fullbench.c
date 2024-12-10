@@ -170,7 +170,7 @@ FORCE_NOINLINE size_t ZSTD_decodeLiteralsHeader(ZSTD_DCtx* dctx, void const* src
     RETURN_ERROR_IF(srcSize < MIN_CBLOCK_SIZE, corruption_detected, "");
     {
         BYTE const* istart = (BYTE const*)src;
-        symbolEncodingType_e const litEncType = (symbolEncodingType_e)(istart[0] & 3);
+        SymbolEncodingType_e const litEncType = (SymbolEncodingType_e)(istart[0] & 3);
         if (litEncType == set_compressed) {
             RETURN_ERROR_IF(srcSize < 5, corruption_detected, "srcSize >= MIN_CBLOCK_SIZE == 3; here we need up to 5 for case 3");
             {

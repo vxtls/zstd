@@ -51,7 +51,7 @@ ZSTD_compressSubBlock_literal(const HUF_CElt* hufTable,
     BYTE* const oend = ostart + dstSize;
     BYTE* op = ostart + lhSize;
     U32 const singleStream = lhSize == 3;
-    symbolEncodingType_e hType = writeEntropy ? hufMetadata->hType : set_repeat;
+    SymbolEncodingType_e hType = writeEntropy ? hufMetadata->hType : set_repeat;
     size_t cLitSize = 0;
 
     DEBUGLOG(5, "ZSTD_compressSubBlock_literal (litSize=%zu, lhSize=%zu, writeEntropy=%d)", litSize, lhSize, writeEntropy);
@@ -327,7 +327,7 @@ static size_t ZSTD_estimateSubBlockSize_literal(const BYTE* literals, size_t lit
     return 0;
 }
 
-static size_t ZSTD_estimateSubBlockSize_symbolType(symbolEncodingType_e type,
+static size_t ZSTD_estimateSubBlockSize_symbolType(SymbolEncodingType_e type,
                         const BYTE* codeTable, unsigned maxCode,
                         size_t nbSeq, const FSE_CTable* fseCTable,
                         const U8* additionalBits,

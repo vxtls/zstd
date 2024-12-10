@@ -13,14 +13,14 @@
 
 #include "zstd_compress_internal.h" /* SeqDef */
 #include "../common/fse.h" /* FSE_repeat, FSE_CTable */
-#include "../common/zstd_internal.h" /* symbolEncodingType_e, ZSTD_strategy */
+#include "../common/zstd_internal.h" /* SymbolEncodingType_e, ZSTD_strategy */
 
 typedef enum {
     ZSTD_defaultDisallowed = 0,
     ZSTD_defaultAllowed = 1
 } ZSTD_defaultPolicy_e;
 
-symbolEncodingType_e
+SymbolEncodingType_e
 ZSTD_selectEncodingType(
         FSE_repeat* repeatMode, unsigned const* count, unsigned const max,
         size_t const mostFrequent, size_t nbSeq, unsigned const FSELog,
@@ -31,7 +31,7 @@ ZSTD_selectEncodingType(
 
 size_t
 ZSTD_buildCTable(void* dst, size_t dstCapacity,
-                FSE_CTable* nextCTable, U32 FSELog, symbolEncodingType_e type,
+                FSE_CTable* nextCTable, U32 FSELog, SymbolEncodingType_e type,
                 unsigned* count, U32 max,
                 const BYTE* codeTable, size_t nbSeq,
                 const S16* defaultNorm, U32 defaultNormLog, U32 defaultMax,

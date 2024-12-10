@@ -505,7 +505,7 @@ static size_t writeLiteralsBlockCompressed(U32* seed, frame_t* frame, size_t con
     size_t compressedSize = 0;
     size_t maxLitSize = MIN(contentSize-3, g_maxBlockSize);
 
-    symbolEncodingType_e hType;
+    SymbolEncodingType_e hType;
 
     if (contentSize < 64) {
         /* make sure we get reasonably-sized literals for compression */

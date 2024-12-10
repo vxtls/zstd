@@ -156,7 +156,7 @@ int ZSTD_seqToCodes(const SeqStore_t* seqStorePtr);   /* compress, dictBuilder, 
  *  hufDesSize refers to the size of huffman tree description in bytes.
  *  This metadata is populated in ZSTD_buildBlockEntropyStats_literals() */
 typedef struct {
-    symbolEncodingType_e hType;
+    SymbolEncodingType_e hType;
     BYTE hufDesBuffer[ZSTD_MAX_HUF_HEADER_SIZE];
     size_t hufDesSize;
 } ZSTD_hufCTablesMetadata_t;
@@ -167,9 +167,9 @@ typedef struct {
  *  fseTablesSize refers to the size of fse tables in bytes.
  *  This metadata is populated in ZSTD_buildBlockEntropyStats_sequences() */
 typedef struct {
-    symbolEncodingType_e llType;
-    symbolEncodingType_e ofType;
-    symbolEncodingType_e mlType;
+    SymbolEncodingType_e llType;
+    SymbolEncodingType_e ofType;
+    SymbolEncodingType_e mlType;
     BYTE fseTablesBuffer[ZSTD_MAX_FSE_HEADERS_SIZE];
     size_t fseTablesSize;
     size_t lastCountSize; /* This is to account for bug in 1.3.4. More detail in ZSTD_entropyCompressSeqStore_internal() */

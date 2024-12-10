@@ -153,7 +153,7 @@ size_t ZSTD_crossEntropyCost(short const* norm, unsigned accuracyLog,
     return cost >> 8;
 }
 
-symbolEncodingType_e
+SymbolEncodingType_e
 ZSTD_selectEncodingType(
         FSE_repeat* repeatMode, unsigned const* count, unsigned const max,
         size_t const mostFrequent, size_t nbSeq, unsigned const FSELog,
@@ -241,7 +241,7 @@ typedef struct {
 
 size_t
 ZSTD_buildCTable(void* dst, size_t dstCapacity,
-                FSE_CTable* nextCTable, U32 FSELog, symbolEncodingType_e type,
+                FSE_CTable* nextCTable, U32 FSELog, SymbolEncodingType_e type,
                 unsigned* count, U32 max,
                 const BYTE* codeTable, size_t nbSeq,
                 const S16* defaultNorm, U32 defaultNormLog, U32 defaultMax,
