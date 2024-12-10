@@ -6817,15 +6817,12 @@ typedef size_t (*ZSTD_SequenceCopier_f) (ZSTD_CCtx* cctx, ZSTD_sequencePosition*
                                        const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
 static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mode)
 {
-    ZSTD_SequenceCopier_f sequenceCopier = NULL;
     assert(ZSTD_cParam_withinBounds(ZSTD_c_blockDelimiters, (int)mode));
     if (mode == ZSTD_sf_explicitBlockDelimiters) {
         return ZSTD_copySequencesToSeqStoreExplicitBlockDelim;
-    } else if (mode == ZSTD_sf_noBlockDelimiters) {
-        return ZSTD_copySequencesToSeqStoreNoBlockDelim;
     }
-    assert(sequenceCopier != NULL);
-    return sequenceCopier;
+    assert(mode == ZSTD_sf_noBlockDelimiters);
+    return ZSTD_copySequencesToSeqStoreNoBlockDelim;
 }
 
 /* Discover the size of next block by searching for the delimiter.
