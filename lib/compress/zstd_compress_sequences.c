@@ -293,7 +293,7 @@ ZSTD_encodeSequences_body(
             FSE_CTable const* CTable_MatchLength, BYTE const* mlCodeTable,
             FSE_CTable const* CTable_OffsetBits, BYTE const* ofCodeTable,
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
-            seqDef const* sequences, size_t nbSeq, int longOffsets)
+            SeqDef const* sequences, size_t nbSeq, int longOffsets)
 {
     BIT_CStream_t blockStream;
     FSE_CState_t  stateMatchLength;
@@ -387,7 +387,7 @@ ZSTD_encodeSequences_default(
             FSE_CTable const* CTable_MatchLength, BYTE const* mlCodeTable,
             FSE_CTable const* CTable_OffsetBits, BYTE const* ofCodeTable,
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
-            seqDef const* sequences, size_t nbSeq, int longOffsets)
+            SeqDef const* sequences, size_t nbSeq, int longOffsets)
 {
     return ZSTD_encodeSequences_body(dst, dstCapacity,
                                     CTable_MatchLength, mlCodeTable,
@@ -405,7 +405,7 @@ ZSTD_encodeSequences_bmi2(
             FSE_CTable const* CTable_MatchLength, BYTE const* mlCodeTable,
             FSE_CTable const* CTable_OffsetBits, BYTE const* ofCodeTable,
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
-            seqDef const* sequences, size_t nbSeq, int longOffsets)
+            SeqDef const* sequences, size_t nbSeq, int longOffsets)
 {
     return ZSTD_encodeSequences_body(dst, dstCapacity,
                                     CTable_MatchLength, mlCodeTable,
@@ -421,7 +421,7 @@ size_t ZSTD_encodeSequences(
             FSE_CTable const* CTable_MatchLength, BYTE const* mlCodeTable,
             FSE_CTable const* CTable_OffsetBits, BYTE const* ofCodeTable,
             FSE_CTable const* CTable_LitLength, BYTE const* llCodeTable,
-            seqDef const* sequences, size_t nbSeq, int longOffsets, int bmi2)
+            SeqDef const* sequences, size_t nbSeq, int longOffsets, int bmi2)
 {
     DEBUGLOG(5, "ZSTD_encodeSequences: dstCapacity = %u", (unsigned)dstCapacity);
 #if DYNAMIC_BMI2
