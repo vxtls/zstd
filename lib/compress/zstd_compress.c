@@ -1661,7 +1661,7 @@ ZSTD_compressionParameters ZSTD_getCParamsFromCCtxParams(
 static size_t
 ZSTD_sizeof_matchState(const ZSTD_compressionParameters* const cParams,
                        const ZSTD_paramSwitch_e useRowMatchFinder,
-                       const U32 enableDedicatedDictSearch,
+                       const int enableDedicatedDictSearch,
                        const U32 forCCtx)
 {
     /* chain table size should be 0 for fast or row-hash strategies */
@@ -5052,7 +5052,7 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
     {   unsigned maxSymbolValue = 255;
         unsigned hasZeroWeights = 1;
         size_t const hufHeaderSize = HUF_readCTable((HUF_CElt*)bs->entropy.huf.CTable, &maxSymbolValue, dictPtr,
-            dictEnd-dictPtr, &hasZeroWeights);
+            (size_t)(dictEnd-dictPtr), &hasZeroWeights);
 
         /* We only set the loaded table as valid if it contains all non-zero
          * weights. Otherwise, we set it to check */
@@ -5064,7 +5064,7 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
     }
 
     {   unsigned offcodeLog;
-        size_t const offcodeHeaderSize = FSE_readNCount(offcodeNCount, &offcodeMaxValue, &offcodeLog, dictPtr, dictEnd-dictPtr);
+        size_t const offcodeHeaderSize = FSE_readNCount(offcodeNCount, &offcodeMaxValue, &offcodeLog, dictPtr, (size_t)(dictEnd-dictPtr));
         RETURN_ERROR_IF(FSE_isError(offcodeHeaderSize), dictionary_corrupted, "");
         RETURN_ERROR_IF(offcodeLog > OffFSELog, dictionary_corrupted, "");
         /* fill all offset symbols to avoid garbage at end of table */
@@ -5093,7 +5093,7 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
 
     {   short litlengthNCount[MaxLL+1];
         unsigned litlengthMaxValue = MaxLL, litlengthLog;
-        size_t const litlengthHeaderSize = FSE_readNCount(litlengthNCount, &litlengthMaxValue, &litlengthLog, dictPtr, dictEnd-dictPtr);
+        size_t const litlengthHeaderSize = FSE_readNCount(litlengthNCount, &litlengthMaxValue, &litlengthLog, dictPtr, (size_t)(dictEnd-dictPtr));
         RETURN_ERROR_IF(FSE_isError(litlengthHeaderSize), dictionary_corrupted, "");
         RETURN_ERROR_IF(litlengthLog > LLFSELog, dictionary_corrupted, "");
         RETURN_ERROR_IF(FSE_isError(FSE_buildCTable_wksp(
@@ -5358,7 +5358,7 @@ static size_t ZSTD_writeEpilogue(ZSTD_CCtx* cctx, void* dst, size_t dstCapacity)
     }
 
     cctx->stage = ZSTDcs_created;  /* return to "created but no init" status */
-    return op-ostart;
+    return (size_t)(op-ostart);
 }
 
 void ZSTD_CCtx_trace(ZSTD_CCtx* cctx, size_t extraCSize)
@@ -5586,7 +5586,7 @@ static ZSTD_CDict* ZSTD_createCDict_advanced_internal(size_t dictSize,
                                       ZSTD_dictLoadMethod_e dictLoadMethod,
                                       ZSTD_compressionParameters cParams,
                                       ZSTD_paramSwitch_e useRowMatchFinder,
-                                      U32 enableDedicatedDictSearch,
+                                      int enableDedicatedDictSearch,
                                       ZSTD_customMem customMem)
 {
     if ((!customMem.customAlloc) ^ (!customMem.customFree)) return NULL;
