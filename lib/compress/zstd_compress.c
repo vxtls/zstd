@@ -6666,9 +6666,11 @@ ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
 }
 
 size_t
-ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
+ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
+                                         ZSTD_sequencePosition* seqPos,
                                    const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                   const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch)
+                                   const void* src, size_t blockSize,
+                                         ZSTD_paramSwitch_e externalRepSearch)
 {
     U32 idx = seqPos->idx;
     U32 startPosInSequence = seqPos->posInSequence;
@@ -6855,7 +6857,7 @@ static size_t determine_blockSize(ZSTD_sequenceFormat_e mode,
     }
 }
 
-/* Compress, block-by-block, all of the sequences given.
+/* Compress all provided sequences, block-by-block.
  *
  * Returns the cumulative size of all compressed blocks (including their headers),
  * otherwise a ZSTD error.
@@ -6896,7 +6898,6 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         FORWARD_IF_ERROR(blockSize, "Error while trying to determine block size");
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
-        DEBUGLOG(5, "Working on new block. Blocksize: %zu (total:%zu)", blockSize, (ip - (const BYTE*)src) + blockSize);
 
         additionalByteAdjustment = sequenceCopier(cctx, &seqPos, inSeqs, inSeqsSize, ip, blockSize, cctx->appliedParams.searchForExternalRepcodes);
         FORWARD_IF_ERROR(additionalByteAdjustment, "Bad sequence copy");
