@@ -1613,33 +1613,6 @@ U32 ZSTD_cycleLog(U32 hashLog, ZSTD_strategy strat);
  */
 void ZSTD_CCtx_trace(ZSTD_CCtx* cctx, size_t extraCSize);
 
-/* Returns 0 on success, and a ZSTD_error otherwise. This function scans through an array of
- * ZSTD_Sequence, storing the sequences it finds, until it reaches a block delimiter.
- * Note that the block delimiter must include the last literals of the block.
- */
-size_t
-ZSTD_copySequencesToSeqStoreExplicitBlockDelim(ZSTD_CCtx* cctx,
-                                              ZSTD_sequencePosition* seqPos,
-                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                        const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
-
-/* Returns the number of bytes to move the current read position back by.
- * Only non-zero if we ended up splitting a sequence.
- * Otherwise, it may return a ZSTD error if something went wrong.
- *
- * This function will attempt to scan through blockSize bytes
- * represented by the sequences in @inSeqs,
- * storing any (partial) sequences.
- *
- * Occasionally, we may want to change the actual number of bytes we consumed from inSeqs to
- * avoid splitting a match, or to avoid splitting a match such that it would produce a match
- * smaller than MINMATCH. In this case, we return the number of bytes that we didn't read from this block.
- */
-size_t
-ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
-                                   const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                   const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
-
 /* Returns 1 if an external sequence producer is registered, otherwise returns 0. */
 MEM_STATIC int ZSTD_hasExtSeqProd(const ZSTD_CCtx_params* params) {
     return params->extSeqProdFunc != NULL;
