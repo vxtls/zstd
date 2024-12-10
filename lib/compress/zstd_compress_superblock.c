@@ -126,7 +126,7 @@ ZSTD_compressSubBlock_literal(const HUF_CElt* hufTable,
 }
 
 static size_t
-ZSTD_seqDecompressedSize(seqStore_t const* seqStore,
+ZSTD_seqDecompressedSize(SeqStore_t const* seqStore,
                    const SeqDef* sequences, size_t nbSeqs,
                          size_t litSize, int lastSubBlock)
 {
@@ -426,7 +426,7 @@ static int ZSTD_needSequenceEntropyTables(ZSTD_fseCTablesMetadata_t const* fseMe
     return 0;
 }
 
-static size_t countLiterals(seqStore_t const* seqStore, const SeqDef* sp, size_t seqCount)
+static size_t countLiterals(SeqStore_t const* seqStore, const SeqDef* sp, size_t seqCount)
 {
     size_t n, total = 0;
     assert(sp != NULL);
@@ -476,7 +476,7 @@ static size_t sizeBlockSequences(const SeqDef* sp, size_t nbSeqs,
  *  Sub-blocks are all compressed, except the last one when beneficial.
  *  @return : compressed size of the super block (which features multiple ZSTD blocks)
  *            or 0 if it failed to compress. */
-static size_t ZSTD_compressSubBlock_multi(const seqStore_t* seqStorePtr,
+static size_t ZSTD_compressSubBlock_multi(const SeqStore_t* seqStorePtr,
                             const ZSTD_compressedBlockState_t* prevCBlock,
                             ZSTD_compressedBlockState_t* nextCBlock,
                             const ZSTD_entropyCTablesMetadata_t* entropyMetadata,
