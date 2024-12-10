@@ -2894,11 +2894,12 @@ ZSTD_buildSequencesStatistics(
 #define SUSPECT_UNCOMPRESSIBLE_LITERAL_RATIO 20
 MEM_STATIC size_t
 ZSTD_entropyCompressSeqStore_internal(
+                              void* dst, size_t dstCapacity,
+                        const void* literals, size_t litSize,
                         const SeqStore_t* seqStorePtr,
                         const ZSTD_entropyCTables_t* prevEntropy,
                               ZSTD_entropyCTables_t* nextEntropy,
                         const ZSTD_CCtx_params* cctxParams,
-                              void* dst, size_t dstCapacity,
                               void* entropyWorkspace, size_t entropyWkspSize,
                         const int bmi2)
 {
@@ -2926,12 +2927,9 @@ ZSTD_entropyCompressSeqStore_internal(
     assert(entropyWkspSize >= HUF_WORKSPACE_SIZE);
 
     /* Compress literals */
-    {   const BYTE* const literals = seqStorePtr->litStart;
-        size_t const numSequences = (size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
-        size_t const numLiterals = (size_t)(seqStorePtr->lit - seqStorePtr->litStart);
+    {   size_t const numSequences = (size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
         /* Base suspicion of uncompressibility on ratio of literals to sequences */
-        unsigned const suspectUncompressible = (numSequences == 0) || (numLiterals / numSequences >= SUSPECT_UNCOMPRESSIBLE_LITERAL_RATIO);
-        size_t const litSize = (size_t)(seqStorePtr->lit - literals);
+        int const suspectUncompressible = (numSequences == 0) || (litSize / numSequences >= SUSPECT_UNCOMPRESSIBLE_LITERAL_RATIO);
 
         size_t const cSize = ZSTD_compressLiterals(
                                     op, dstCapacity,
@@ -3012,7 +3010,7 @@ ZSTD_entropyCompressSeqStore_internal(
     return (size_t)(op - ostart);
 }
 
-MEM_STATIC size_t
+static size_t
 ZSTD_entropyCompressSeqStore(
                     const SeqStore_t* seqStorePtr,
                     const ZSTD_entropyCTables_t* prevEntropy,
@@ -3024,8 +3022,9 @@ ZSTD_entropyCompressSeqStore(
                           int bmi2)
 {
     size_t const cSize = ZSTD_entropyCompressSeqStore_internal(
-                            seqStorePtr, prevEntropy, nextEntropy, cctxParams,
                             dst, dstCapacity,
+                            seqStorePtr->litStart, (size_t)(seqStorePtr->lit - seqStorePtr->litStart),
+                            seqStorePtr, prevEntropy, nextEntropy, cctxParams,
                             entropyWorkspace, entropyWkspSize, bmi2);
     if (cSize == 0) return 0;
     /* When srcSize <= dstCapacity, there is enough space to write a raw uncompressed block.
