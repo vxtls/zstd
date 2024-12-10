@@ -11,6 +11,7 @@
 #ifndef ZSTD_COMPRESS_SEQUENCES_H
 #define ZSTD_COMPRESS_SEQUENCES_H
 
+#include "zstd_compress_internal.h" /* seqDef */
 #include "../common/fse.h" /* FSE_repeat, FSE_CTable */
 #include "../common/zstd_internal.h" /* symbolEncodingType_e, ZSTD_strategy */
 

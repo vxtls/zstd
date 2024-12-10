@@ -154,7 +154,7 @@ size_t ZSTD_compressBound(size_t srcSize); </b>/*!< maximum compressed size in w
  it's recommended to provide @dstCapacity >= ZSTD_compressBound(srcSize)
  as it eliminates one potential failure scenario,
  aka not enough room in dst buffer to write the compressed frame.
- Note : ZSTD_compressBound() itself can fail, if @srcSize > ZSTD_MAX_INPUT_SIZE .
+ Note : ZSTD_compressBound() itself can fail, if @srcSize >= ZSTD_MAX_INPUT_SIZE .
         In which case, ZSTD_compressBound() will return an error code
         which can be tested using ZSTD_isError().
 
@@ -1406,6 +1406,20 @@ ZSTD_compressSequences( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
  Note: Repcodes are, as of now, always re-calculated within this function, so ZSTD_Sequence::rep is unused.
  Note 2: Once we integrate ability to ingest repcodes, the explicit block delims mode must respect those repcodes exactly,
          and cannot emit an RLE block that disagrees with the repcode history
+ @return : final compressed size, or a ZSTD error code.
+ 
+</p></pre><BR>
+
+<pre><b>ZSTDLIB_STATIC_API size_t
+ZSTD_compressSequencesAndLiterals( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
+            const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
+            const void* literals, size_t litSize);
+</b><p> This is a variant of ZSTD_compressSequences() which,
+ instead of receiving (src,srcSize) as input parameter, receives (literals,litSize),
+ aka all literals already extracted and grouped into a single continuous buffer.
+ This can be useful if the process generating the sequences also happens to generate the buffer of literals,
+ thus skipping an extraction + caching stage.
+ To be valid, `litSize` must be equal to the sum of all @.litLength fields in @inSeqs.
  @return : final compressed size, or a ZSTD error code.
  
 </p></pre><BR>

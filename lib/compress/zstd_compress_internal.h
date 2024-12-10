@@ -84,6 +84,70 @@ typedef struct {
 } ZSTD_entropyCTables_t;
 
 /***********************************************
+*  Sequences *
+***********************************************/
+typedef struct seqDef_s {
+    U32 offBase;   /* offBase == Offset + ZSTD_REP_NUM, or repcode 1,2,3 */
+    U16 litLength;
+    U16 mlBase;    /* mlBase == matchLength - MINMATCH */
+} seqDef;
+
+/* Controls whether seqStore has a single "long" litLength or matchLength. See seqStore_t. */
+typedef enum {
+    ZSTD_llt_none = 0,             /* no longLengthType */
+    ZSTD_llt_literalLength = 1,    /* represents a long literal */
+    ZSTD_llt_matchLength = 2       /* represents a long match */
+} ZSTD_longLengthType_e;
+
+typedef struct {
+    seqDef* sequencesStart;
+    seqDef* sequences;      /* ptr to end of sequences */
+    BYTE*  litStart;
+    BYTE*  lit;             /* ptr to end of literals */
+    BYTE*  llCode;
+    BYTE*  mlCode;
+    BYTE*  ofCode;
+    size_t maxNbSeq;
+    size_t maxNbLit;
+
+    /* longLengthPos and longLengthType to allow us to represent either a single litLength or matchLength
+     * in the seqStore that has a value larger than U16 (if it exists). To do so, we increment
+     * the existing value of the litLength or matchLength by 0x10000.
+     */
+    ZSTD_longLengthType_e longLengthType;
+    U32                   longLengthPos;  /* Index of the sequence to apply long length modification to */
+} seqStore_t;
+
+typedef struct {
+    U32 litLength;
+    U32 matchLength;
+} ZSTD_sequenceLength;
+
+/**
+ * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
+ * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
+ */
+MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(seqStore_t const* seqStore, seqDef const* seq)
+{
+    ZSTD_sequenceLength seqLen;
+    seqLen.litLength = seq->litLength;
+    seqLen.matchLength = seq->mlBase + MINMATCH;
+    if (seqStore->longLengthPos == (U32)(seq - seqStore->sequencesStart)) {
+        if (seqStore->longLengthType == ZSTD_llt_literalLength) {
+            seqLen.litLength += 0x10000;
+        }
+        if (seqStore->longLengthType == ZSTD_llt_matchLength) {
+            seqLen.matchLength += 0x10000;
+        }
+    }
+    return seqLen;
+}
+
+const seqStore_t* ZSTD_getSeqStore(const ZSTD_CCtx* ctx);   /* compress & dictBuilder */
+int ZSTD_seqToCodes(const seqStore_t* seqStorePtr);   /* compress, dictBuilder, decodeCorpus (shouldn't get its definition from here) */
+
+
+/***********************************************
 *  Entropy buffer statistics structs and funcs *
 ***********************************************/
 /** ZSTD_hufCTablesMetadata_t :
