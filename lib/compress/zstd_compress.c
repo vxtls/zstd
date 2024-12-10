@@ -6812,12 +6812,12 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
     return bytesAdjustment;
 }
 
-typedef size_t (*ZSTD_sequenceCopier) (ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
+typedef size_t (*ZSTD_SequenceCopier_f) (ZSTD_CCtx* cctx, ZSTD_sequencePosition* seqPos,
                                        const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
                                        const void* src, size_t blockSize, ZSTD_paramSwitch_e externalRepSearch);
-static ZSTD_sequenceCopier ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mode)
+static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mode)
 {
-    ZSTD_sequenceCopier sequenceCopier = NULL;
+    ZSTD_SequenceCopier_f sequenceCopier = NULL;
     assert(ZSTD_cParam_withinBounds(ZSTD_c_blockDelimiters, (int)mode));
     if (mode == ZSTD_sf_explicitBlockDelimiters) {
         return ZSTD_copySequencesToSeqStoreExplicitBlockDelim;
@@ -6896,7 +6896,7 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
 
     BYTE const* ip = (BYTE const*)src;
     BYTE* op = (BYTE*)dst;
-    ZSTD_sequenceCopier const sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
+    ZSTD_SequenceCopier_f const sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
 
     DEBUGLOG(4, "ZSTD_compressSequences_internal srcSize: %zu, inSeqsSize: %zu", srcSize, inSeqsSize);
     /* Special case: empty frame */
