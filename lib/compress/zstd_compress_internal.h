@@ -121,15 +121,15 @@ typedef struct {
 typedef struct {
     U32 litLength;
     U32 matchLength;
-} ZSTD_sequenceLength;
+} ZSTD_SequenceLength;
 
 /**
- * Returns the ZSTD_sequenceLength for the given sequences. It handles the decoding of long sequences
+ * Returns the ZSTD_SequenceLength for the given sequences. It handles the decoding of long sequences
  * indicated by longLengthPos and longLengthType, and adds MINMATCH back to matchLength.
  */
-MEM_STATIC ZSTD_sequenceLength ZSTD_getSequenceLength(SeqStore_t const* seqStore, SeqDef const* seq)
+MEM_STATIC ZSTD_SequenceLength ZSTD_getSequenceLength(SeqStore_t const* seqStore, SeqDef const* seq)
 {
-    ZSTD_sequenceLength seqLen;
+    ZSTD_SequenceLength seqLen;
     seqLen.litLength = seq->litLength;
     seqLen.matchLength = seq->mlBase + MINMATCH;
     if (seqStore->longLengthPos == (U32)(seq - seqStore->sequencesStart)) {
