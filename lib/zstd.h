@@ -1660,10 +1660,11 @@ ZSTD_compressSequences( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
 /*! ZSTD_compressSequencesAndLiterals() :
  * This is a variant of ZSTD_compressSequences() which,
  * instead of receiving (src,srcSize) as input parameter, receives (literals,litSize),
- * aka all literals already extracted and grouped into a single continuous buffer.
+ * aka all literals already extracted and laid out into a single continuous buffer.
  * This can be useful if the process generating the sequences also happens to generate the buffer of literals,
  * thus skipping an extraction + caching stage.
- * To be valid, `litSize` must be equal to the sum of all @.litLength fields in @inSeqs.
+ * To be valid, @litSize must be equal to the sum of all @.litLength fields in @inSeqs.
+ * Important: Employing this prototype is incompatible with frame checksum.
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
