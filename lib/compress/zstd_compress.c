@@ -6935,7 +6935,7 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
     size_t remaining = srcSize;
     ZSTD_SequencePosition seqPos = {0, 0, 0};
 
-    BYTE const* ip = (BYTE const*)src;
+    const BYTE* ip = (BYTE const*)src;
     BYTE* op = (BYTE*)dst;
     ZSTD_SequenceCopier_f const sequenceCopier = ZSTD_selectSequenceCopier(cctx->appliedParams.blockDelimiters);
 
@@ -6998,7 +6998,7 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         if (!cctx->isFirstBlock &&
             ZSTD_maybeRLE(&cctx->seqStore) &&
             ZSTD_isRLE(ip, blockSize)) {
-            /* We don't want to emit our first block as RLE even if it qualifies because
+            /* Note: don't emit the first block as RLE even if it qualifies because
              * doing so will cause the decoder (cli <= v1.4.3 only) to throw an (invalid) error
              * "should consume all input error."
              */
@@ -7053,7 +7053,6 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
 {
     BYTE* op = (BYTE*)dst;
     size_t cSize = 0;
-    size_t frameHeaderSize = 0;
 
     /* Transparent initialization stage, same as compressStream2() */
     DEBUGLOG(4, "ZSTD_compressSequences (dstCapacity=%zu)", dstCapacity);
@@ -7061,14 +7060,18 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
     FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, srcSize), "CCtx initialization failed");
 
     /* Begin writing output, starting with frame header */
-    frameHeaderSize = ZSTD_writeFrameHeader(op, dstCapacity, &cctx->appliedParams, srcSize, cctx->dictID);
-    op += frameHeaderSize;
-    dstCapacity -= frameHeaderSize;
-    cSize += frameHeaderSize;
+    {   size_t const frameHeaderSize = ZSTD_writeFrameHeader(op, dstCapacity,
+                    &cctx->appliedParams, srcSize, cctx->dictID);
+        op += frameHeaderSize;
+        assert(frameHeaderSize <= dstCapacity);
+        dstCapacity -= frameHeaderSize;
+        cSize += frameHeaderSize;
+    }
     if (cctx->appliedParams.fParams.checksumFlag && srcSize) {
         XXH64_update(&cctx->xxhState, src, srcSize);
     }
 
+    /* Now generate compressed blocks */
     {   size_t const cBlocksSize = ZSTD_compressSequences_internal(cctx,
                                                            op, dstCapacity,
                                                            inSeqs, inSeqsSize,
@@ -7079,6 +7082,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
         dstCapacity -= cBlocksSize;
     }
 
+    /* Complete with frame checksum, if needed */
     if (cctx->appliedParams.fParams.checksumFlag) {
         U32 const checksum = (U32) XXH64_digest(&cctx->xxhState);
         RETURN_ERROR_IF(dstCapacity<4, dstSize_tooSmall, "no room for checksum");
