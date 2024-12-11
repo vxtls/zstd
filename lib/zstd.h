@@ -1625,7 +1625,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  * Compress an array of ZSTD_Sequence, associated with @src buffer, into dst.
  * @src contains the entire input (not just the literals).
  * If @srcSize > sum(sequence.length), the remaining bytes are considered all literals
- * If a dictionary is included, then the cctx should reference the dict. (see: ZSTD_CCtx_refCDict(), ZSTD_CCtx_loadDictionary(), etc.)
+ * If a dictionary is included, then the cctx should reference the dict (see: ZSTD_CCtx_refCDict(), ZSTD_CCtx_loadDictionary(), etc.).
  * The entire source is compressed into a single frame.
  *
  * The compression behavior changes based on cctx params. In particular:
@@ -1646,15 +1646,16 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  *    - ZSTD_c_windowLog affects offset validation: this function will return an error at higher debug levels if a provided offset
  *      is larger than what the spec allows for a given window log and dictionary (if present). See: doc/zstd_compression_format.md
  *
- * Note: Repcodes are, as of now, always re-calculated within this function, so ZSTD_Sequence::rep is unused.
- * Note 2: Once we integrate ability to ingest repcodes, the explicit block delims mode must respect those repcodes exactly,
- *         and cannot emit an RLE block that disagrees with the repcode history
+ * Note: Repcodes are, as of now, always re-calculated within this function, ZSTD_Sequence.rep is effectively unused.
+ * Dev Note: Once ability to ingest repcodes become available, the explicit block delims mode must respect those repcodes exactly,
+ *         and cannot emit an RLE block that disagrees with the repcode history.
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
-ZSTD_compressSequences( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
-                        const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                        const void* src, size_t srcSize);
+ZSTD_compressSequences(ZSTD_CCtx* cctx,
+                       void* dst, size_t dstCapacity,
+                 const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
+                 const void* src, size_t srcSize);
 
 
 /*! ZSTD_compressSequencesAndLiterals() :
@@ -1668,9 +1669,10 @@ ZSTD_compressSequences( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
-ZSTD_compressSequencesAndLiterals( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
-                        const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                        const void* literals, size_t litSize);
+ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
+                                  void* dst, size_t dstCapacity,
+                            const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
+                            const void* literals, size_t litSize);
 
 
 /*! ZSTD_writeSkippableFrame() :
