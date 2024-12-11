@@ -1665,15 +1665,19 @@ ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * aka all literals already extracted and laid out into a single continuous buffer.
  * This can be useful if the process generating the sequences also happens to generate the buffer of literals,
  * thus skipping an extraction + caching stage.
- * To be valid, @litSize must be equal to the sum of all @.litLength fields in @inSeqs.
- * Important: Employing this prototype is incompatible with frame checksum.
+ * It's essentially a speed optimization when the right conditions are met,
+ * but it also is restricted by the following limitations:
+ * - Only supports explicit delimiter mode
+ * - Not compatible with frame checksum, which must disabled
+ * - Can fail when unable to compress sufficiently
+ * Also, to be valid, @litSize must be equal to the sum of all @.litLength fields in @inSeqs.
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
 ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
                                   void* dst, size_t dstCapacity,
                             const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                            const void* literals, size_t litSize);
+                            const void* literals, size_t litSize, size_t srcSize);
 
 
 /*! ZSTD_writeSkippableFrame() :
