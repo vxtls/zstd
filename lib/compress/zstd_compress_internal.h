@@ -213,9 +213,9 @@ typedef struct {
                            stopped. posInSequence <= seq[pos].litLength + seq[pos].matchLength */
   size_t size;          /* The number of sequences. <= capacity. */
   size_t capacity;      /* The capacity starting from `seq` pointer */
-} rawSeqStore_t;
+} RawSeqStore_t;
 
-UNUSED_ATTR static const rawSeqStore_t kNullRawSeqStore = {NULL, 0, 0, 0, 0};
+UNUSED_ATTR static const RawSeqStore_t kNullRawSeqStore = {NULL, 0, 0, 0, 0};
 
 typedef struct {
     int price;  /* price from beginning of segment to this position */
@@ -303,7 +303,7 @@ struct ZSTD_MatchState_t {
     optState_t opt;         /* optimal parser state */
     const ZSTD_MatchState_t* dictMatchState;
     ZSTD_compressionParameters cParams;
-    const rawSeqStore_t* ldmSeqStore;
+    const RawSeqStore_t* ldmSeqStore;
 
     /* Controls prefetching in some dictMatchState matchfinders.
      * This behavior is controlled from the cctx ms.
@@ -500,7 +500,7 @@ struct ZSTD_CCtx_s {
     ldmState_t ldmState;      /* long distance matching state */
     rawSeq* ldmSequences;     /* Storage for the ldm output sequences */
     size_t maxNbLdmSequences;
-    rawSeqStore_t externSeqStore; /* Mutable reference to external sequences */
+    RawSeqStore_t externSeqStore; /* Mutable reference to external sequences */
     ZSTD_blockState_t blockState;
     void* tmpWorkspace;  /* used as substitute of stack space - must be aligned for S64 type */
     size_t tmpWkspSize;

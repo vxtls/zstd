@@ -905,7 +905,7 @@ ZSTD_selectBtGetAllMatches(ZSTD_MatchState_t const* ms, ZSTD_dictMode_e const di
 
 /* Struct containing info needed to make decision about ldm inclusion */
 typedef struct {
-    rawSeqStore_t seqStore;   /* External match candidates store for this block */
+    RawSeqStore_t seqStore;   /* External match candidates store for this block */
     U32 startPosInBlock;      /* Start position of the current match candidate */
     U32 endPosInBlock;        /* End position of the current match candidate */
     U32 offset;               /* Offset of the match candidate */
@@ -915,7 +915,7 @@ typedef struct {
  * Moves forward in @rawSeqStore by @nbBytes,
  * which will update the fields 'pos' and 'posInSequence'.
  */
-static void ZSTD_optLdm_skipRawSeqStoreBytes(rawSeqStore_t* rawSeqStore, size_t nbBytes)
+static void ZSTD_optLdm_skipRawSeqStoreBytes(RawSeqStore_t* rawSeqStore, size_t nbBytes)
 {
     U32 currPos = (U32)(rawSeqStore->posInSequence + nbBytes);
     while (currPos && rawSeqStore->pos < rawSeqStore->size) {
