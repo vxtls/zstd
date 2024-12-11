@@ -6887,20 +6887,17 @@ blockSize_explicitDelimiter(const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD
     return blockSize;
 }
 
-/* More a "target" block size */
-static size_t blockSize_noDelimiter(size_t blockSize, size_t remaining)
-{
-    int const lastBlock = (remaining <= blockSize);
-    return lastBlock ? remaining : blockSize;
-}
-
 static size_t determine_blockSize(ZSTD_SequenceFormat_e mode,
                            size_t blockSize, size_t remaining,
-                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize, ZSTD_SequencePosition seqPos)
+                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
+                           ZSTD_SequencePosition seqPos)
 {
     DEBUGLOG(6, "determine_blockSize : remainingSize = %zu", remaining);
-    if (mode == ZSTD_sf_noBlockDelimiters)
-        return blockSize_noDelimiter(blockSize, remaining);
+    if (mode == ZSTD_sf_noBlockDelimiters) {
+        /* Note: more a "target" block size */
+        return MIN(remaining, blockSize);
+    }
+    assert(mode == ZSTD_sf_explicitBlockDelimiters);
     {   size_t const explicitBlockSize = blockSize_explicitDelimiter(inSeqs, inSeqsSize, seqPos);
         FORWARD_IF_ERROR(explicitBlockSize, "Error while determining block size with explicit delimiters");
         if (explicitBlockSize > blockSize)
