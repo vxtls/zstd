@@ -3317,7 +3317,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
                                        src, srcSize);
             assert(zc->externSeqStore.pos <= zc->externSeqStore.size);
         } else if (zc->appliedParams.ldmParams.enableLdm == ZSTD_ps_enable) {
-            rawSeqStore_t ldmSeqStore = kNullRawSeqStore;
+            RawSeqStore_t ldmSeqStore = kNullRawSeqStore;
 
             /* External matchfinder + LDM is technically possible, just not implemented yet.
              * We need to revisit soon and implement it. */
