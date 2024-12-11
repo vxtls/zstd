@@ -3074,9 +3074,9 @@ ZSTD_entropyCompressSeqStore(
 /* ZSTD_selectBlockCompressor() :
  * Not static, but internal use only (used by long distance matcher)
  * assumption : strat is a valid strategy */
-ZSTD_blockCompressor ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramSwitch_e useRowMatchFinder, ZSTD_dictMode_e dictMode)
+ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramSwitch_e useRowMatchFinder, ZSTD_dictMode_e dictMode)
 {
-    static const ZSTD_blockCompressor blockCompressor[4][ZSTD_STRATEGY_MAX+1] = {
+    static const ZSTD_BlockCompressor_f blockCompressor[4][ZSTD_STRATEGY_MAX+1] = {
         { ZSTD_compressBlock_fast  /* default for 0 */,
           ZSTD_compressBlock_fast,
           ZSTD_COMPRESSBLOCK_DOUBLEFAST,
@@ -3121,13 +3121,13 @@ ZSTD_blockCompressor ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramS
           NULL,
           NULL }
     };
-    ZSTD_blockCompressor selectedCompressor;
+    ZSTD_BlockCompressor_f selectedCompressor;
     ZSTD_STATIC_ASSERT((unsigned)ZSTD_fast == 1);
 
     assert(ZSTD_cParam_withinBounds(ZSTD_c_strategy, (int)strat));
     DEBUGLOG(4, "Selected block compressor: dictMode=%d strat=%d rowMatchfinder=%d", (int)dictMode, (int)strat, (int)useRowMatchFinder);
     if (ZSTD_rowMatchFinderUsed(strat, useRowMatchFinder)) {
-        static const ZSTD_blockCompressor rowBasedBlockCompressors[4][3] = {
+        static const ZSTD_BlockCompressor_f rowBasedBlockCompressors[4][3] = {
             {
                 ZSTD_COMPRESSBLOCK_GREEDY_ROW,
                 ZSTD_COMPRESSBLOCK_LAZY_ROW,
@@ -3391,7 +3391,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
                 }
 
                 /* Fallback to software matchfinder */
-                {   ZSTD_blockCompressor const blockCompressor =
+                {   ZSTD_BlockCompressor_f const blockCompressor =
                         ZSTD_selectBlockCompressor(
                             zc->appliedParams.cParams.strategy,
                             zc->appliedParams.useRowMatchFinder,
@@ -3405,7 +3405,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
                     lastLLSize = blockCompressor(ms, &zc->seqStore, zc->blockState.nextCBlock->rep, src, srcSize);
             }   }
         } else {   /* not long range mode and no external matchfinder */
-            ZSTD_blockCompressor const blockCompressor = ZSTD_selectBlockCompressor(
+            ZSTD_BlockCompressor_f const blockCompressor = ZSTD_selectBlockCompressor(
                     zc->appliedParams.cParams.strategy,
                     zc->appliedParams.useRowMatchFinder,
                     dictMode);
