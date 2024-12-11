@@ -1227,13 +1227,13 @@ ZSTD_compressBlock_opt_generic(ZSTD_MatchState_t* ms,
                           && (with1literal < opt[cur+1].price) ) {
                             /* update offset history - before it disappears */
                             U32 const prev = cur - prevMatch.mlen;
-                            repcodes_t const newReps = ZSTD_newRep(opt[prev].rep, prevMatch.off, opt[prev].litlen==0);
+                            Repcodes_t const newReps = ZSTD_newRep(opt[prev].rep, prevMatch.off, opt[prev].litlen==0);
                             assert(cur >= prevMatch.mlen);
                             DEBUGLOG(7, "==> match+1lit is cheaper (%.2f < %.2f) (hist:%u,%u,%u) !",
                                         ZSTD_fCost(with1literal), ZSTD_fCost(withMoreLiterals),
                                         newReps.rep[0], newReps.rep[1], newReps.rep[2] );
                             opt[cur+1] = prevMatch;  /* mlen & offbase */
-                            ZSTD_memcpy(opt[cur+1].rep, &newReps, sizeof(repcodes_t));
+                            ZSTD_memcpy(opt[cur+1].rep, &newReps, sizeof(Repcodes_t));
                             opt[cur+1].litlen = 1;
                             opt[cur+1].price = with1literal;
                             if (last_pos < cur+1) last_pos = cur+1;
@@ -1248,13 +1248,13 @@ ZSTD_compressBlock_opt_generic(ZSTD_MatchState_t* ms,
             /* Offset history is not updated during match comparison.
              * Do it here, now that the match is selected and confirmed.
              */
-            ZSTD_STATIC_ASSERT(sizeof(opt[cur].rep) == sizeof(repcodes_t));
+            ZSTD_STATIC_ASSERT(sizeof(opt[cur].rep) == sizeof(Repcodes_t));
             assert(cur >= opt[cur].mlen);
             if (opt[cur].litlen == 0) {
                 /* just finished a match => alter offset history */
                 U32 const prev = cur - opt[cur].mlen;
-                repcodes_t const newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, opt[prev].litlen==0);
-                ZSTD_memcpy(opt[cur].rep, &newReps, sizeof(repcodes_t));
+                Repcodes_t const newReps = ZSTD_newRep(opt[prev].rep, opt[cur].off, opt[prev].litlen==0);
+                ZSTD_memcpy(opt[cur].rep, &newReps, sizeof(Repcodes_t));
             }
 
             /* last match must start at a minimum distance of 8 from oend */
@@ -1353,10 +1353,10 @@ _shortestPath:   /* cur, last_pos, best_mlen, best_off have to be set */
         /* Update offset history */
         if (lastStretch.litlen == 0) {
             /* finishing on a match : update offset history */
-            repcodes_t const reps = ZSTD_newRep(opt[cur].rep, lastStretch.off, opt[cur].litlen==0);
-            ZSTD_memcpy(rep, &reps, sizeof(repcodes_t));
+            Repcodes_t const reps = ZSTD_newRep(opt[cur].rep, lastStretch.off, opt[cur].litlen==0);
+            ZSTD_memcpy(rep, &reps, sizeof(Repcodes_t));
         } else {
-            ZSTD_memcpy(rep, lastStretch.rep, sizeof(repcodes_t));
+            ZSTD_memcpy(rep, lastStretch.rep, sizeof(Repcodes_t));
             assert(cur >= lastStretch.litlen);
             cur -= lastStretch.litlen;
         }

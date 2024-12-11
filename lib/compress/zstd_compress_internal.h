@@ -849,12 +849,12 @@ ZSTD_updateRep(U32 rep[ZSTD_REP_NUM], U32 const offBase, U32 const ll0)
 
 typedef struct repcodes_s {
     U32 rep[3];
-} repcodes_t;
+} Repcodes_t;
 
-MEM_STATIC repcodes_t
+MEM_STATIC Repcodes_t
 ZSTD_newRep(U32 const rep[ZSTD_REP_NUM], U32 const offBase, U32 const ll0)
 {
-    repcodes_t newReps;
+    Repcodes_t newReps;
     ZSTD_memcpy(&newReps, rep, sizeof(newReps));
     ZSTD_updateRep(newReps.rep, offBase, ll0);
     return newReps;
