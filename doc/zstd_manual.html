@@ -1315,8 +1315,8 @@ ZSTDLIB_STATIC_API size_t ZSTD_getFrameHeader_advanced(ZSTD_frameHeader* zfhPtr,
 </p></pre><BR>
 
 <pre><b>typedef enum {
-  ZSTD_sf_noBlockDelimiters = 0,         </b>/* Representation of ZSTD_Sequence has no block delimiters, sequences only */<b>
-  ZSTD_sf_explicitBlockDelimiters = 1    </b>/* Representation of ZSTD_Sequence contains explicit block delimiters */<b>
+  ZSTD_sf_noBlockDelimiters = 0,         </b>/* ZSTD_Sequence[] has no block delimiters, just sequences */<b>
+  ZSTD_sf_explicitBlockDelimiters = 1    </b>/* ZSTD_Sequence[] contains explicit block delimiters */<b>
 } ZSTD_SequenceFormat_e;
 </b></pre><BR>
 <pre><b>ZSTDLIB_STATIC_API size_t ZSTD_sequenceBound(size_t srcSize);
