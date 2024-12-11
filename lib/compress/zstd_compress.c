@@ -6624,7 +6624,7 @@ static U32 ZSTD_finalizeOffBase(U32 rawOffset, const U32 rep[ZSTD_REP_NUM], U32 
  * storing the sequences it reads, until it reaches a block delimiter.
  * Note that the block delimiter includes the last literals of the block.
  * @blockSize must be == sum(sequence_lengths).
- * @returns 0 on success, and a ZSTD_error otherwise.
+ * @returns @blockSize on success, and a ZSTD_error otherwise.
  */
 static size_t
 ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
@@ -6711,21 +6711,19 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
     }
     RETURN_ERROR_IF(ip != iend, externalSequences_invalid, "Blocksize doesn't agree with block delimiter!");
     seqPos->idx = idx+1;
-    return 0;
+    return blockSize;
 }
 
 /*
- * This function attempts to scan through blockSize bytes
+ * This function attempts to scan through @blockSize bytes in @src
  * represented by the sequences in @inSeqs,
  * storing any (partial) sequences.
  *
- * @returns the number of bytes to move the current read position back by.
- * Only non-zero if we ended up splitting a sequence.
- * Otherwise, it may return a ZSTD error if something went wrong.
+ * Occasionally, we may want to reduce the actual number of bytes consumed from @src
+ * to avoid splitting a match, notably if it would produce a match smaller than MINMATCH.
  *
- * Occasionally, we may want to change the actual number of bytes we consumed from inSeqs to
- * avoid splitting a match, or to avoid splitting a match such that it would produce a match
- * smaller than MINMATCH. In this case, we return the number of bytes that we didn't read from this block.
+ * @returns the number of bytes consumed from @src, necessarily <= @blockSize.
+ * Otherwise, it may return a ZSTD error if something went wrong.
  */
 static size_t
 ZSTD_transferSequences_noDelim(ZSTD_CCtx* cctx,
@@ -6738,8 +6736,9 @@ ZSTD_transferSequences_noDelim(ZSTD_CCtx* cctx,
     U32 startPosInSequence = seqPos->posInSequence;
     U32 endPosInSequence = seqPos->posInSequence + (U32)blockSize;
     size_t dictSize;
-    BYTE const* ip = (BYTE const*)(src);
-    BYTE const* iend = ip + blockSize;  /* May be adjusted if we decide to process fewer than blockSize bytes */
+    const BYTE* const istart = (const BYTE*)(src);
+    const BYTE* ip = istart;
+    const BYTE* iend = istart + blockSize;  /* May be adjusted if we decide to process fewer than blockSize bytes */
     Repcodes_t updatedRepcodes;
     U32 bytesAdjustment = 0;
     U32 finalMatchSplit = 0;
@@ -6842,21 +6841,20 @@ ZSTD_transferSequences_noDelim(ZSTD_CCtx* cctx,
     iend -= bytesAdjustment;
     if (ip != iend) {
         /* Store any last literals */
-        U32 lastLLSize = (U32)(iend - ip);
+        U32 const lastLLSize = (U32)(iend - ip);
         assert(ip <= iend);
         DEBUGLOG(6, "Storing last literals of size: %u", lastLLSize);
         ZSTD_storeLastLiterals(&cctx->seqStore, ip, lastLLSize);
         seqPos->posInSrc += lastLLSize;
     }
 
-    return bytesAdjustment;
+    return (size_t)(iend-istart);
 }
 
 /* @seqPos represents a position within @inSeqs,
  * it is read and updated by this function,
  * once the goal to produce a block of size @blockSize is reached.
- * @return: nb of bytes missing to reach @blockSize goal.
- * so (@blockSize - @return) represents the nb of bytes ingested from @src.
+ * @return: nb of bytes consumed from @src, necessarily <= @blockSize.
  */
 typedef size_t (*ZSTD_SequenceCopier_f)(ZSTD_CCtx* cctx,
                                         ZSTD_SequencePosition* seqPos,
@@ -6963,10 +6961,11 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
 
-        {   size_t adjust = sequenceCopier(cctx, &seqPos, inSeqs, inSeqsSize, ip, blockSize, cctx->appliedParams.searchForExternalRepcodes);
-            FORWARD_IF_ERROR(adjust, "Bad sequence copy");
-            blockSize -= adjust;
-        }
+        blockSize = sequenceCopier(cctx,
+                                   &seqPos, inSeqs, inSeqsSize,
+                                   ip, blockSize,
+                                   cctx->appliedParams.searchForExternalRepcodes);
+        FORWARD_IF_ERROR(blockSize, "Bad sequence copy");
 
         /* If blocks are too small, emit as a nocompress block */
         /* TODO: See 3090. We reduced MIN_CBLOCK_SIZE from 3 to 2 so to compensate we are adding
@@ -7054,13 +7053,13 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
 {
     BYTE* op = (BYTE*)dst;
     size_t cSize = 0;
-    size_t compressedBlocksSize = 0;
     size_t frameHeaderSize = 0;
 
     /* Transparent initialization stage, same as compressStream2() */
     DEBUGLOG(4, "ZSTD_compressSequences (dstCapacity=%zu)", dstCapacity);
     assert(cctx != NULL);
     FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, srcSize), "CCtx initialization failed");
+
     /* Begin writing output, starting with frame header */
     frameHeaderSize = ZSTD_writeFrameHeader(op, dstCapacity, &cctx->appliedParams, srcSize, cctx->dictID);
     op += frameHeaderSize;
@@ -7069,14 +7068,16 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
     if (cctx->appliedParams.fParams.checksumFlag && srcSize) {
         XXH64_update(&cctx->xxhState, src, srcSize);
     }
-    /* cSize includes block header size and compressed sequences size */
-    compressedBlocksSize = ZSTD_compressSequences_internal(cctx,
+
+    {   size_t const cBlocksSize = ZSTD_compressSequences_internal(cctx,
                                                            op, dstCapacity,
                                                            inSeqs, inSeqsSize,
                                                            src, srcSize);
-    FORWARD_IF_ERROR(compressedBlocksSize, "Compressing blocks failed!");
-    cSize += compressedBlocksSize;
-    dstCapacity -= compressedBlocksSize;
+        FORWARD_IF_ERROR(cBlocksSize, "Compressing blocks failed!");
+        cSize += cBlocksSize;
+        assert(cBlocksSize <= dstCapacity);
+        dstCapacity -= cBlocksSize;
+    }
 
     if (cctx->appliedParams.fParams.checksumFlag) {
         U32 const checksum = (U32) XXH64_digest(&cctx->xxhState);
