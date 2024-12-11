@@ -247,7 +247,7 @@ typedef struct {
     U32  offCodeSumBasePrice;    /* to compare to log2(offreq)  */
     ZSTD_OptPrice_e priceType;   /* prices can be determined dynamically, or follow a pre-defined cost structure */
     const ZSTD_entropyCTables_t* symbolCosts;  /* pre-calculated dictionary statistics */
-    ZSTD_paramSwitch_e literalCompressionMode;
+    ZSTD_ParamSwitch_e literalCompressionMode;
 } optState_t;
 
 typedef struct {
@@ -348,7 +348,7 @@ typedef struct {
 } ldmState_t;
 
 typedef struct {
-    ZSTD_paramSwitch_e enableLdm; /* ZSTD_ps_enable to enable LDM. ZSTD_ps_auto by default */
+    ZSTD_ParamSwitch_e enableLdm; /* ZSTD_ps_enable to enable LDM. ZSTD_ps_auto by default */
     U32 hashLog;            /* Log size of hashTable */
     U32 bucketSizeLog;      /* Log bucket size for collision resolution, at most 8 */
     U32 minMatchLength;     /* Minimum match length */
@@ -379,7 +379,7 @@ struct ZSTD_CCtx_params_s {
                                 * There is no guarantee that hint is close to actual source size */
 
     ZSTD_dictAttachPref_e attachDictPref;
-    ZSTD_paramSwitch_e literalCompressionMode;
+    ZSTD_ParamSwitch_e literalCompressionMode;
 
     /* Multithreading: used to pass parameters to mtctx */
     int nbWorkers;
@@ -411,14 +411,14 @@ struct ZSTD_CCtx_params_s {
      * then levels are sorted in increasing cpu budget, from 2 (fastest) to 6 (slowest).
      * Highest @preBlockSplitter_level combines well with @postBlockSplitter.
      */
-    ZSTD_paramSwitch_e postBlockSplitter;
+    ZSTD_ParamSwitch_e postBlockSplitter;
     int preBlockSplitter_level;
 
     /* Adjust the max block size*/
     size_t maxBlockSize;
 
     /* Param for deciding whether to use row-based matchfinder */
-    ZSTD_paramSwitch_e useRowMatchFinder;
+    ZSTD_ParamSwitch_e useRowMatchFinder;
 
     /* Always load a dictionary in ext-dict mode (not prefix mode)? */
     int deterministicRefPrefix;
@@ -427,7 +427,7 @@ struct ZSTD_CCtx_params_s {
     ZSTD_customMem customMem;
 
     /* Controls prefetching in some dictMatchState matchfinders */
-    ZSTD_paramSwitch_e prefetchCDictTables;
+    ZSTD_ParamSwitch_e prefetchCDictTables;
 
     /* Controls whether zstd will fall back to an internal matchfinder
      * if the external matchfinder returns an error code. */
@@ -440,7 +440,7 @@ struct ZSTD_CCtx_params_s {
     ZSTD_sequenceProducer_F extSeqProdFunc;
 
     /* Controls repcode search in external sequence parsing */
-    ZSTD_paramSwitch_e searchForExternalRepcodes;
+    ZSTD_ParamSwitch_e searchForExternalRepcodes;
 };  /* typedef'd to ZSTD_CCtx_params within "zstd.h" */
 
 #define COMPRESS_SEQUENCES_WORKSPACE_SIZE (sizeof(unsigned) * (MaxSeq + 2))
@@ -582,7 +582,7 @@ typedef enum {
 typedef size_t (*ZSTD_BlockCompressor_f) (
         ZSTD_MatchState_t* bs, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         void const* src, size_t srcSize);
-ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_paramSwitch_e rowMatchfinderMode, ZSTD_dictMode_e dictMode);
+ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_ParamSwitch_e rowMatchfinderMode, ZSTD_dictMode_e dictMode);
 
 
 MEM_STATIC U32 ZSTD_LLcode(U32 litLength)

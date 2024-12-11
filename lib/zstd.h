@@ -1433,14 +1433,15 @@ typedef enum {
 } ZSTD_literalCompressionMode_e;
 
 typedef enum {
-  /* Note: This enum controls features which are conditionally beneficial. Zstd typically will make a final
-   * decision on whether or not to enable the feature (ZSTD_ps_auto), but setting the switch to ZSTD_ps_enable
-   * or ZSTD_ps_disable allow for a force enable/disable the feature.
+  /* Note: This enum controls features which are conditionally beneficial.
+   * Zstd can take a decision on whether or not to enable the feature (ZSTD_ps_auto),
+   * but setting the switch to ZSTD_ps_enable or ZSTD_ps_disable force enable/disable the feature.
    */
   ZSTD_ps_auto = 0,         /* Let the library automatically determine whether the feature shall be enabled */
   ZSTD_ps_enable = 1,       /* Force-enable the feature */
   ZSTD_ps_disable = 2       /* Do not use the feature */
-} ZSTD_paramSwitch_e;
+} ZSTD_ParamSwitch_e;
+#define ZSTD_paramSwitch_e ZSTD_ParamSwitch_e  /* old name */
 
 /***************************************
 *  Frame header and size functions
@@ -2024,7 +2025,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * See the comments on that enum for an explanation of the feature. */
 #define ZSTD_c_forceAttachDict ZSTD_c_experimentalParam4
 
-/* Controlled with ZSTD_paramSwitch_e enum.
+/* Controlled with ZSTD_ParamSwitch_e enum.
  * Default is ZSTD_ps_auto.
  * Set to ZSTD_ps_disable to never compress literals.
  * Set to ZSTD_ps_enable to always compress literals. (Note: uncompressed literals
@@ -2215,7 +2216,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 #define ZSTD_c_splitAfterSequences ZSTD_c_experimentalParam13
 
 /* ZSTD_c_useRowMatchFinder
- * Controlled with ZSTD_paramSwitch_e enum.
+ * Controlled with ZSTD_ParamSwitch_e enum.
  * Default is ZSTD_ps_auto.
  * Set to ZSTD_ps_disable to never use row-based matchfinder.
  * Set to ZSTD_ps_enable to force usage of row-based matchfinder.
@@ -2247,7 +2248,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 #define ZSTD_c_deterministicRefPrefix ZSTD_c_experimentalParam15
 
 /* ZSTD_c_prefetchCDictTables
- * Controlled with ZSTD_paramSwitch_e enum. Default is ZSTD_ps_auto.
+ * Controlled with ZSTD_ParamSwitch_e enum. Default is ZSTD_ps_auto.
  *
  * In some situations, zstd uses CDict tables in-place rather than copying them
  * into the working context. (See docs on ZSTD_dictAttachPref_e above for details).

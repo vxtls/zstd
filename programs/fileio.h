@@ -95,7 +95,7 @@ void FIO_setSrcSizeHint(FIO_prefs_t* const prefs, size_t srcSizeHint);
 void FIO_setTestMode(FIO_prefs_t* const prefs, int testMode);
 void FIO_setLiteralCompressionMode(
         FIO_prefs_t* const prefs,
-        ZSTD_paramSwitch_e mode);
+        ZSTD_ParamSwitch_e mode);
 
 void FIO_setProgressSetting(FIO_progressSetting_e progressSetting);
 void FIO_setNotificationLevel(int level);
@@ -106,7 +106,7 @@ void FIO_setContentSize(FIO_prefs_t* const prefs, int value);
 void FIO_displayCompressionParameters(const FIO_prefs_t* prefs);
 void FIO_setAsyncIOFlag(FIO_prefs_t* const prefs, int value);
 void FIO_setPassThroughFlag(FIO_prefs_t* const prefs, int value);
-void FIO_setMMapDict(FIO_prefs_t* const prefs, ZSTD_paramSwitch_e value);
+void FIO_setMMapDict(FIO_prefs_t* const prefs, ZSTD_ParamSwitch_e value);
 
 /* FIO_ctx_t functions */
 void FIO_setNbFilesTotal(FIO_ctx_t* const fCtx, int value);
