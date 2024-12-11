@@ -1189,9 +1189,9 @@ size_t ZSTD_sizeof_DDict(const ZSTD_DDict* ddict);
 } ZSTD_literalCompressionMode_e;
 </b></pre><BR>
 <pre><b>typedef enum {
-  </b>/* Note: This enum controls features which are conditionally beneficial. Zstd typically will make a final<b>
-   * decision on whether or not to enable the feature (ZSTD_ps_auto), but setting the switch to ZSTD_ps_enable
-   * or ZSTD_ps_disable allow for a force enable/disable the feature.
+  </b>/* Note: This enum controls features which are conditionally beneficial.<b>
+   * Zstd can take a decision on whether or not to enable the feature (ZSTD_ps_auto),
+   * but setting the switch to ZSTD_ps_enable or ZSTD_ps_disable force enable/disable the feature.
    */
   ZSTD_ps_auto = 0,         </b>/* Let the library automatically determine whether the feature shall be enabled */<b>
   ZSTD_ps_enable = 1,       </b>/* Force-enable the feature */<b>
