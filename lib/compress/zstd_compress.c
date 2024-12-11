@@ -3427,7 +3427,7 @@ static size_t ZSTD_copyBlockSequences(SeqCollector* seqCollector, const SeqStore
     ZSTD_Sequence* outSeqs = seqCollector->seqIndex == 0 ? seqCollector->seqStart : seqCollector->seqStart + seqCollector->seqIndex;
     const size_t nbOutSequences = nbInSequences + 1;
     size_t nbOutLiterals = 0;
-    repcodes_t repcodes;
+    Repcodes_t repcodes;
     size_t i;
 
     /* Bounds check that we have enough space for every input sequence
@@ -4059,7 +4059,7 @@ ZSTD_resolveRepcodeToRawOffset(const U32 rep[ZSTD_REP_NUM], const U32 offBase, c
  *        4+ : real_offset+3
  */
 static void
-ZSTD_seqStore_resolveOffCodes(repcodes_t* const dRepcodes, repcodes_t* const cRepcodes,
+ZSTD_seqStore_resolveOffCodes(Repcodes_t* const dRepcodes, Repcodes_t* const cRepcodes,
                         const SeqStore_t* const seqStore, U32 const nbSeq)
 {
     U32 idx = 0;
@@ -4096,7 +4096,7 @@ ZSTD_seqStore_resolveOffCodes(repcodes_t* const dRepcodes, repcodes_t* const cRe
 static size_t
 ZSTD_compressSeqStore_singleBlock(ZSTD_CCtx* zc,
                             const SeqStore_t* const seqStore,
-                                  repcodes_t* const dRep, repcodes_t* const cRep,
+                                  Repcodes_t* const dRep, Repcodes_t* const cRep,
                                   void* dst, size_t dstCapacity,
                             const void* src, size_t srcSize,
                                   U32 lastBlock, U32 isPartition)
@@ -4108,7 +4108,7 @@ ZSTD_compressSeqStore_singleBlock(ZSTD_CCtx* zc,
     size_t cSeqsSize;
 
     /* In case of an RLE or raw block, the simulated decompression repcode history must be reset */
-    repcodes_t const dRepOriginal = *dRep;
+    Repcodes_t const dRepOriginal = *dRep;
     DEBUGLOG(5, "ZSTD_compressSeqStore_singleBlock");
     if (isPartition)
         ZSTD_seqStore_resolveOffCodes(dRep, cRep, seqStore, (U32)(seqStore->sequences - seqStore->sequencesStart));
@@ -4279,10 +4279,10 @@ ZSTD_compressBlock_splitBlock_internal(ZSTD_CCtx* zc,
      *
      * See ZSTD_seqStore_resolveOffCodes() for more details.
      */
-    repcodes_t dRep;
-    repcodes_t cRep;
-    ZSTD_memcpy(dRep.rep, zc->blockState.prevCBlock->rep, sizeof(repcodes_t));
-    ZSTD_memcpy(cRep.rep, zc->blockState.prevCBlock->rep, sizeof(repcodes_t));
+    Repcodes_t dRep;
+    Repcodes_t cRep;
+    ZSTD_memcpy(dRep.rep, zc->blockState.prevCBlock->rep, sizeof(Repcodes_t));
+    ZSTD_memcpy(cRep.rep, zc->blockState.prevCBlock->rep, sizeof(Repcodes_t));
     ZSTD_memset(nextSeqStore, 0, sizeof(SeqStore_t));
 
     DEBUGLOG(5, "ZSTD_compressBlock_splitBlock_internal (dstCapacity=%u, dictLimit=%u, nextToUpdate=%u)",
@@ -4338,7 +4338,7 @@ ZSTD_compressBlock_splitBlock_internal(ZSTD_CCtx* zc,
     /* cRep and dRep may have diverged during the compression.
      * If so, we use the dRep repcodes for the next block.
      */
-    ZSTD_memcpy(zc->blockState.prevCBlock->rep, dRep.rep, sizeof(repcodes_t));
+    ZSTD_memcpy(zc->blockState.prevCBlock->rep, dRep.rep, sizeof(Repcodes_t));
     return cSize;
 }
 
@@ -6617,21 +6617,22 @@ static U32 ZSTD_finalizeOffBase(U32 rawOffset, const U32 rep[ZSTD_REP_NUM], U32 
 
 /* This function scans through an array of ZSTD_Sequence,
  * storing the sequences it reads, until it reaches a block delimiter.
- * Note that the block delimiter must include the last literals of the block.
+ * Note that the block delimiter includes the last literals of the block.
+ * @blockSize must be == sum(sequence_lengths).
  * @returns 0 on success, and a ZSTD_error otherwise.
  */
 static size_t
 ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
-                                               ZSTD_SequencePosition* seqPos,
-                                         const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                         const void* src, size_t blockSize,
-                                               ZSTD_paramSwitch_e externalRepSearch)
+                                   ZSTD_SequencePosition* seqPos,
+                             const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
+                             const void* src, size_t blockSize,
+                                   ZSTD_paramSwitch_e externalRepSearch)
 {
     U32 idx = seqPos->idx;
     U32 const startIdx = idx;
     BYTE const* ip = (BYTE const*)(src);
     const BYTE* const iend = ip + blockSize;
-    repcodes_t updatedRepcodes;
+    Repcodes_t updatedRepcodes;
     U32 dictSize;
 
     DEBUGLOG(5, "ZSTD_transferSequences_wBlockDelim (blockSize = %zu)", blockSize);
@@ -6643,7 +6644,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
     } else {
         dictSize = 0;
     }
-    ZSTD_memcpy(updatedRepcodes.rep, cctx->blockState.prevCBlock->rep, sizeof(repcodes_t));
+    ZSTD_memcpy(updatedRepcodes.rep, cctx->blockState.prevCBlock->rep, sizeof(Repcodes_t));
     for (; idx < inSeqsSize && (inSeqs[idx].matchLength != 0 || inSeqs[idx].offset != 0); ++idx) {
         U32 const litLength = inSeqs[idx].litLength;
         U32 const matchLength = inSeqs[idx].matchLength;
@@ -6695,7 +6696,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
         }
     }
 
-    ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(repcodes_t));
+    ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     if (inSeqs[idx].litLength) {
         DEBUGLOG(6, "Storing last literals of size: %u", inSeqs[idx].litLength);
@@ -6708,24 +6709,25 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
     return 0;
 }
 
-/* Returns the number of bytes to move the current read position back by.
- * Only non-zero if we ended up splitting a sequence.
- * Otherwise, it may return a ZSTD error if something went wrong.
- *
- * This function will attempt to scan through blockSize bytes
+/*
+ * This function attempts to scan through blockSize bytes
  * represented by the sequences in @inSeqs,
  * storing any (partial) sequences.
+ *
+ * @returns the number of bytes to move the current read position back by.
+ * Only non-zero if we ended up splitting a sequence.
+ * Otherwise, it may return a ZSTD error if something went wrong.
  *
  * Occasionally, we may want to change the actual number of bytes we consumed from inSeqs to
  * avoid splitting a match, or to avoid splitting a match such that it would produce a match
  * smaller than MINMATCH. In this case, we return the number of bytes that we didn't read from this block.
  */
 static size_t
-ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
-                                         ZSTD_SequencePosition* seqPos,
-                                   const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
-                                   const void* src, size_t blockSize,
-                                         ZSTD_paramSwitch_e externalRepSearch)
+ZSTD_transferSequences_noDelim(ZSTD_CCtx* cctx,
+                               ZSTD_SequencePosition* seqPos,
+                         const ZSTD_Sequence* const inSeqs, size_t inSeqsSize,
+                         const void* src, size_t blockSize,
+                               ZSTD_paramSwitch_e externalRepSearch)
 {
     U32 idx = seqPos->idx;
     U32 startPosInSequence = seqPos->posInSequence;
@@ -6733,7 +6735,7 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
     size_t dictSize;
     BYTE const* ip = (BYTE const*)(src);
     BYTE const* iend = ip + blockSize;  /* May be adjusted if we decide to process fewer than blockSize bytes */
-    repcodes_t updatedRepcodes;
+    Repcodes_t updatedRepcodes;
     U32 bytesAdjustment = 0;
     U32 finalMatchSplit = 0;
 
@@ -6747,9 +6749,9 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
     } else {
         dictSize = 0;
     }
-    DEBUGLOG(5, "ZSTD_copySequencesToSeqStoreNoBlockDelim: idx: %u PIS: %u blockSize: %zu", idx, startPosInSequence, blockSize);
+    DEBUGLOG(5, "ZSTD_transferSequences_noDelim: idx: %u PIS: %u blockSize: %zu", idx, startPosInSequence, blockSize);
     DEBUGLOG(5, "Start seq: idx: %u (of: %u ml: %u ll: %u)", idx, inSeqs[idx].offset, inSeqs[idx].matchLength, inSeqs[idx].litLength);
-    ZSTD_memcpy(updatedRepcodes.rep, cctx->blockState.prevCBlock->rep, sizeof(repcodes_t));
+    ZSTD_memcpy(updatedRepcodes.rep, cctx->blockState.prevCBlock->rep, sizeof(Repcodes_t));
     while (endPosInSequence && idx < inSeqsSize && !finalMatchSplit) {
         const ZSTD_Sequence currSeq = inSeqs[idx];
         U32 litLength = currSeq.litLength;
@@ -6830,7 +6832,7 @@ ZSTD_copySequencesToSeqStoreNoBlockDelim(ZSTD_CCtx* cctx,
     assert(idx == inSeqsSize || endPosInSequence <= inSeqs[idx].litLength + inSeqs[idx].matchLength);
     seqPos->idx = idx;
     seqPos->posInSequence = endPosInSequence;
-    ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(repcodes_t));
+    ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     iend -= bytesAdjustment;
     if (ip != iend) {
@@ -6855,7 +6857,7 @@ static ZSTD_SequenceCopier_f ZSTD_selectSequenceCopier(ZSTD_SequenceFormat_e mod
         return ZSTD_transferSequences_wBlockDelim;
     }
     assert(mode == ZSTD_sf_noBlockDelimiters);
-    return ZSTD_copySequencesToSeqStoreNoBlockDelim;
+    return ZSTD_transferSequences_noDelim;
 }
 
 /* Discover the size of next block by searching for the delimiter.

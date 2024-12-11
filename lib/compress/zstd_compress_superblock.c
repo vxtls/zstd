@@ -648,7 +648,7 @@ static size_t ZSTD_compressSubBlock_multi(const SeqStore_t* seqStorePtr,
         /* We have to regenerate the repcodes because we've skipped some sequences */
         if (sp < send) {
             const SeqDef* seq;
-            repcodes_t rep;
+            Repcodes_t rep;
             ZSTD_memcpy(&rep, prevCBlock->rep, sizeof(rep));
             for (seq = sstart; seq < sp; ++seq) {
                 ZSTD_updateRep(rep.rep, seq->offBase, ZSTD_getSequenceLength(seqStorePtr, seq).litLength == 0);
