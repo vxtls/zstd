@@ -7104,7 +7104,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
  */
 static size_t
 ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos,
+                        ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         ZSTD_ParamSwitch_e externalRepSearch)
@@ -7114,6 +7114,7 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
     Repcodes_t updatedRepcodes;
     U32 dictSize;
     size_t startPosInSrc = seqPos->posInSrc;
+    size_t litConsumed = 0;
 
     DEBUGLOG(5, "ZSTD_transferSequencesOnly_wBlockDelim (blockSize = %zu)", blockSize);
 
@@ -7150,10 +7151,15 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
         RETURN_ERROR_IF(idx - seqPos->idx >= cctx->seqStore.maxNbSeq, externalSequences_invalid,
                         "Not enough memory allocated. Try adjusting ZSTD_c_minMatch.");
         ZSTD_storeSeqOnly(&cctx->seqStore, litLength, offBase, matchLength);
+        litConsumed += litLength;
     }
 
     /* last sequence (only literals) */
-    seqPos->posInSrc += inSeqs[idx].litLength;
+    {   size_t const lastLitLength = inSeqs[idx].litLength;
+        seqPos->posInSrc += lastLitLength;
+        cctx->seqStore.lit += lastLitLength;  /* register proper length */
+        litConsumed += lastLitLength;
+    }
 
     /* blockSize must be exactly correct (checked before calling this function) */
     assert((seqPos->posInSrc - startPosInSrc) == blockSize); (void)startPosInSrc;
@@ -7184,6 +7190,7 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     seqPos->idx = idx+1;
+    *litConsumedPtr = litConsumed;
     return blockSize;
 }
 
@@ -7214,21 +7221,23 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     }
 
     while (remaining) {
-        size_t compressedSeqsSize;
-        size_t cBlockSize;
+        size_t compressedSeqsSize, cBlockSize, litConsumed;
         size_t blockSize = determine_blockSize(cctx->appliedParams.blockDelimiters,
                                         cctx->blockSize, remaining,
                                         inSeqs, nbSequences, seqPos);
         U32 const lastBlock = (blockSize == remaining);
         FORWARD_IF_ERROR(blockSize, "Error while trying to determine block size");
+        RETURN_ERROR_IF(!lastBlock, GENERIC, "Only supports single block");
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
 
         blockSize = ZSTD_transferSequencesOnly_wBlockDelim(cctx,
-                                   &seqPos,
+                                   &seqPos, &litConsumed,
                                    inSeqs, nbSequences,
                                    blockSize,
                                    cctx->appliedParams.searchForExternalRepcodes);
+        RETURN_ERROR_IF(blockSize != remaining, GENERIC, "Must consume the entire block");
+        RETURN_ERROR_IF(litConsumed != litSize, GENERIC, "Must consume the exact amount of literals provided");
         FORWARD_IF_ERROR(blockSize, "Bad sequence copy");
 
         /* Note: when blockSize is very small, other variant send it uncompressed.
