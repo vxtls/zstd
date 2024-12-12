@@ -1422,7 +1422,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
  This can be useful if the process generating the sequences also happens to generate the buffer of literals,
  thus skipping an extraction + caching stage.
  It's essentially a speed optimization when the right conditions are met,
- but it also includes so following limitations:
+ but it also is restricted by the following limitations:
  - Only supports explicit delimiter mode
  - Not compatible with frame checksum, which must disabled
  - Can fail when unable to compress sufficiently
