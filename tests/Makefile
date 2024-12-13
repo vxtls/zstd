@@ -148,6 +148,7 @@ fullbench32: CPPFLAGS += -m32
 $(FULLBENCHS) : CPPFLAGS += $(MULTITHREAD_CPP) -Wno-deprecated-declarations
 $(FULLBENCHS) : LDFLAGS += $(MULTITHREAD_LD)
 $(FULLBENCHS) : DEBUGFLAGS = -DNDEBUG  # turn off assert() for speed measurements
+$(FULLBENCHS) : DEBUGLEVEL = 0  # turn off assert() for speed measurements
 $(FULLBENCHS) : $(ZSTD_FILES)
 $(FULLBENCHS) : $(PRGDIR)/datagen.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c fullbench.c
 	$(LINK.c) $^ -o $@$(EXT)
@@ -271,7 +272,7 @@ clean:
 #----------------------------------------------------------------------------------
 # valgrind tests validated only for some posix platforms
 #----------------------------------------------------------------------------------
-UNAME := $(shell sh -c 'MSYSTEM="MSYS" uname') 
+UNAME := $(shell sh -c 'MSYSTEM="MSYS" uname')
 ifneq (,$(filter Linux Darwin GNU/kFreeBSD GNU OpenBSD FreeBSD NetBSD DragonFly SunOS AIX CYGWIN_NT%,$(UNAME)))
 HOST_OS = POSIX
 
