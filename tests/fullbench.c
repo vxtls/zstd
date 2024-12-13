@@ -519,10 +519,8 @@ static PrepResult prepCopy(void* dst, size_t dstCapacity, const void* src, size_
 
 static PrepResult prepShorterDstCapacity(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
 {
-    const PrepResult r = { srcSize, srcSize, dstCapacity-1};
-    (void)cLevel;
-    assert(dstCapacity >= srcSize);
-    memcpy(dst, src, srcSize);
+    PrepResult r = prepCopy(dst, dstCapacity, src, srcSize, cLevel);
+    r.moddedDstCapacity = dstCapacity - 1;
     return r;
 }
 
@@ -564,33 +562,33 @@ static BenchScenario kScenarios[] = {
 /*_*******************************************************
 *  Bench functions
 *********************************************************/
-static int benchMem(unsigned benchNb,
+static int benchMem(unsigned scenarioID,
                     const void* origSrc, size_t origSrcSize,
                     int cLevel, ZSTD_compressionParameters cparams)
 {
-    size_t dstBuffCapacity = ZSTD_compressBound(origSrcSize);
-    void*  dstBuff;
+    size_t dstCapacity = ZSTD_compressBound(origSrcSize);
+    void*  dst;
     void*  prepBuff;
-    size_t prepBuffCapacity=dstBuffCapacity, prepBuffSize;
+    size_t prepBuffCapacity=dstCapacity, prepBuffSize;
     void*  payload;
     const char* benchName;
     BMK_benchFn_t benchFunction;
     PrepFunction_f prep_f;
     int errorcode = 0;
 
-    if (benchNb >= NB_SCENARIOS) return 0; /* scenario doesn't exist */
+    if (scenarioID >= NB_SCENARIOS) return 0; /* scenario doesn't exist */
 
-    benchName = kScenarios[benchNb].name;
-    benchFunction = kScenarios[benchNb].benchedFunction;
-    prep_f = kScenarios[benchNb].preparation_f;
+    benchName = kScenarios[scenarioID].name;
+    benchFunction = kScenarios[scenarioID].benchedFunction;
+    prep_f = kScenarios[scenarioID].preparation_f;
     if (prep_f == NULL) prep_f = prepCopy; /* default */
 
     /* Allocation */
-    dstBuff  = malloc(dstBuffCapacity);
+    dst  = malloc(dstCapacity);
     prepBuff = malloc(prepBuffCapacity);
-    if ((!dstBuff) || (!prepBuff)) {
+    if ((!dst) || (!prepBuff)) {
         DISPLAY("\nError: not enough memory!\n");
-        free(dstBuff); free(prepBuff);
+        free(dst); free(prepBuff);
         return 12;
     }
     if (g_zcc==NULL) g_zcc = ZSTD_createCCtx();
@@ -625,16 +623,16 @@ static int benchMem(unsigned benchNb,
     {   PrepResult pr = prep_f(prepBuff, prepBuffCapacity, origSrc, origSrcSize, cLevel);
         prepBuffSize = pr.prepSize;
         origSrcSize = pr.fixedOrigSize;
-        if (pr.moddedDstCapacity) dstBuffCapacity = pr.moddedDstCapacity;
+        if (pr.moddedDstCapacity) dstCapacity = pr.moddedDstCapacity;
     }
     if (prepBuffSize==0) goto _cleanOut; /* failed preparation */
 
      /* warming up dstBuff */
-    { size_t i; for (i=0; i<dstBuffCapacity; i++) ((BYTE*)dstBuff)[i]=(BYTE)i; }
+    { size_t i; for (i=0; i<dstCapacity; i++) ((BYTE*)dst)[i]=(BYTE)i; }
 
     /* benchmark loop */
     {   BMK_timedFnState_t* const tfs = BMK_createTimedFnState(g_nbIterations * 1000, 1000);
-        void* const avoidStrictAliasingPtr = &dstBuff;
+        void* const avoidStrictAliasingPtr = &dst;
         const void* prepSrc = prepBuff;
         BMK_benchParams_t bp;
         BMK_runTime_t bestResult;
@@ -652,7 +650,7 @@ static int benchMem(unsigned benchNb,
         bp.srcSizes = &prepBuffSize;
         bp.dstBuffers = (void* const*) avoidStrictAliasingPtr;  /* circumvent strict aliasing warning on gcc-8,
                                                                  * because gcc considers that `void* const *`  and `void**` are 2 different types */
-        bp.dstCapacities = &dstBuffCapacity;
+        bp.dstCapacities = &dstCapacity;
         bp.blockResults = NULL;
 
         for (;;) {
@@ -668,7 +666,7 @@ static int benchMem(unsigned benchNb,
                 if (newResult.nanoSecPerRun < bestResult.nanoSecPerRun )
                     bestResult.nanoSecPerRun = newResult.nanoSecPerRun;
                 DISPLAY("\r%2u#%-31.31s:%8.1f MB/s  (%8u) ",
-                        benchNb, benchName,
+                        scenarioID, benchName,
                         (double)origSrcSize * TIMELOOP_NANOSEC / bestResult.nanoSecPerRun / MB_UNIT,
                         (unsigned)newResult.sumOfReturn );
             }
@@ -681,7 +679,7 @@ static int benchMem(unsigned benchNb,
 
 _cleanOut:
     free(prepBuff);
-    free(dstBuff);
+    free(dst);
     ZSTD_freeCCtx(g_zcc); g_zcc=NULL;
     ZSTD_freeDCtx(g_zdc); g_zdc=NULL;
     ZSTD_freeCStream(g_cstream); g_cstream=NULL;
@@ -690,7 +688,8 @@ _cleanOut:
 }
 
 
-static int benchSample(U32 benchNb,
+#define BENCH_ALL_SCENARIOS 999
+static int benchSample(U32 scenarioID,
                        size_t benchedSize, double compressibility,
                        int cLevel, ZSTD_compressionParameters cparams)
 {
@@ -704,19 +703,20 @@ static int benchSample(U32 benchNb,
     /* bench */
     DISPLAY("\r%70s\r", "");
     DISPLAY(" Sample %u bytes : \n", (unsigned)benchedSize);
-    if (benchNb) {
-        benchMem(benchNb, origBuff, benchedSize, cLevel, cparams);
-    } else {  /* 0 == run all tests */
-        for (benchNb=0; benchNb<100; benchNb++) {
-            benchMem(benchNb, origBuff, benchedSize, cLevel, cparams);
-    }   }
+    if (scenarioID == BENCH_ALL_SCENARIOS) {
+        for (scenarioID=0; scenarioID<100; scenarioID++) {
+            benchMem(scenarioID, origBuff, benchedSize, cLevel, cparams);
+        }
+    } else {
+        benchMem(scenarioID, origBuff, benchedSize, cLevel, cparams);
+    }
 
     free(origBuff);
     return 0;
 }
 
 
-static int benchFiles(U32 benchNb,
+static int benchFiles(U32 scenarioID,
                       const char** fileNamesTable, const int nbFiles,
                       int cLevel, ZSTD_compressionParameters cparams)
 {
@@ -762,13 +762,12 @@ static int benchFiles(U32 benchNb,
             /* bench */
             DISPLAY("\r%70s\r", "");   /* blank line */
             DISPLAY(" %s : \n", inFileName);
-            if (benchNb) {
-                benchMem(benchNb, origBuff, benchedSize, cLevel, cparams);
-            } else {
-                for (benchNb=0; benchNb<100; benchNb++) {
-                    benchMem(benchNb, origBuff, benchedSize, cLevel, cparams);
+            if (scenarioID == BENCH_ALL_SCENARIOS) {
+                for (scenarioID=0; scenarioID<100; scenarioID++) {
+                    benchMem(scenarioID, origBuff, benchedSize, cLevel, cparams);
                 }
-                benchNb = 0;
+            } else {
+                benchMem(scenarioID, origBuff, benchedSize, cLevel, cparams);
             }
 
             free(origBuff);
@@ -858,7 +857,7 @@ int main(int argc, const char** argv)
     int argNb, filenamesStart=0, result;
     const char* const exename = argv[0];
     const char* input_filename = NULL;
-    U32 benchNb = 0, main_pause = 0;
+    U32 scenarioID = BENCH_ALL_SCENARIOS, main_pause = 0;
     int cLevel = DEFAULT_CLEVEL;
     ZSTD_compressionParameters cparams = ZSTD_getCParams(cLevel, 0, 0);
     size_t sampleSize = kSampleSizeDefault;
@@ -909,7 +908,7 @@ int main(int argc, const char** argv)
                     /* Select specific algorithm to bench */
                 case 'b':
                     argument++;
-                    benchNb = readU32FromChar(&argument);
+                    scenarioID = readU32FromChar(&argument);
                     break;
 
                     /* Select compression level to use */
@@ -951,9 +950,9 @@ int main(int argc, const char** argv)
 
 
     if (filenamesStart==0)   /* no input file */
-        result = benchSample(benchNb, sampleSize, compressibility, cLevel, cparams);
+        result = benchSample(scenarioID, sampleSize, compressibility, cLevel, cparams);
     else
-        result = benchFiles(benchNb, argv+filenamesStart, argc-filenamesStart, cLevel, cparams);
+        result = benchFiles(scenarioID, argv+filenamesStart, argc-filenamesStart, cLevel, cparams);
 
     if (main_pause) { int unused; printf("press enter...\n"); unused = getchar(); (void)unused; }
 
