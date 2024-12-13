@@ -132,14 +132,14 @@ typedef struct {
     size_t fixedOrigSize;
     size_t moddedDstCapacity; /* if ==0, no modification */
 } PrepResult;
+#define PREPRESULT_INIT { 0,0,0 }
 
 static PrepResult prepDecompress(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
 {
     size_t cSize = ZSTD_compress(dst, dstCapacity, src, srcSize, cLevel);
-    PrepResult r;
+    PrepResult r = PREPRESULT_INIT;
     r.prepSize = cSize;
     r.fixedOrigSize = srcSize;
-    r.moddedDstCapacity = 0;
     return r;
 }
 
@@ -172,7 +172,7 @@ static PrepResult prepLiterals(void* dst, size_t dstCapacity, const void* src, s
     {   blockProperties_t bp;
         ZSTD_getcBlockSize((char*)dst+frameHeaderSize, dstCapacity, &bp);  /* Get 1st block type */
         if (bp.blockType != bt_compressed) {
-            const PrepResult r = {0,0, 0};
+            const PrepResult r = PREPRESULT_INIT;
             DISPLAY("no compressed literals\n");
             return r;
     }   }
@@ -181,10 +181,9 @@ static PrepResult prepLiterals(void* dst, size_t dstCapacity, const void* src, s
         memmove(dst, (char*)dst+skippedSize, prepSize);
     }
     ZSTD_decompressBegin(g_zdc);
-    {   PrepResult r;
+    {   PrepResult r = PREPRESULT_INIT;
         r.prepSize = prepSize;
         r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;    /* speed relative to block */
-        r.moddedDstCapacity = 0;
         return r;
     }
 }
@@ -276,7 +275,7 @@ static PrepResult prepSequences(void* dst, size_t dstCapacity, const void* src, 
     {   blockProperties_t bp;
         size_t const cBlockSize = ZSTD_getcBlockSize(ip, dstCapacity, &bp);   /* Get 1st block type */
         if (bp.blockType != bt_compressed) {
-            const PrepResult r = {0,0, 0};
+            const PrepResult r = PREPRESULT_INIT;
             DISPLAY("no compressed sequences\n");
             return r;
         }
@@ -286,10 +285,9 @@ static PrepResult prepSequences(void* dst, size_t dstCapacity, const void* src, 
     ZSTD_decompressBegin(g_zdc);
     CONTROL(iend > ip);
     ip += ZSTD_decodeLiteralsBlock_wrapper(g_zdc, ip, (size_t)(iend-ip), dst, dstCapacity);   /* skip literal segment */
-    {   PrepResult r;
+    {   PrepResult r = PREPRESULT_INIT;
         r.prepSize = (size_t)(iend-ip);
         r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;   /* speed relative to block */
-        r.moddedDstCapacity = 0;
         memmove(dst, ip, r.prepSize);   /* copy rest of block (it starts by SeqHeader) */
         return r;
     }
@@ -543,23 +541,23 @@ static BenchScenario kScenarios[] = {
     { "decompress", prepDecompress, local_ZSTD_decompress },
     { "compress_freshCCtx", NULL, local_ZSTD_compress_freshCCtx },
     { "decompressDCtx", prepDecompress, local_ZSTD_decompressDCtx },
-#ifndef ZSTD_DLL_IMPORT
     { "compressContinue", NULL, local_ZSTD_compressContinue },
     { "compressContinue_extDict", NULL, local_ZSTD_compressContinue_extDict },
     { "decompressContinue", prepDecompress, local_ZSTD_decompressContinue },
-    { "decodeLiteralsHeader", prepLiterals, local_ZSTD_decodeLiteralsHeader },
-    { "decodeLiteralsBlock", prepLiterals, local_ZSTD_decodeLiteralsBlock },
-    { "decodeSeqHeaders", prepSequences, local_ZSTD_decodeSeqHeaders },
-#endif
     { "compressStream", NULL, local_ZSTD_compressStream },
-    { "decompressStream", prepDecompress, local_ZSTD_decompressStream },
     { "compressStream_freshCCtx", NULL, local_ZSTD_compressStream_freshCCtx },
+    { "decompressStream", prepDecompress, local_ZSTD_decompressStream },
     { "compress2", NULL, local_ZSTD_compress2 },
     { "compressStream2, end", NULL, local_ZSTD_compressStream2_end },
     { "compressStream2, end & short", prepShorterDstCapacity, local_ZSTD_compressStream2_end },
     { "compressStream2, continue", NULL, local_ZSTD_compressStream2_continue },
-    { "compress_generic, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue },
-    { "compress_generic, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
+    { "compressStream2, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue },
+    { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
+#ifndef ZSTD_DLL_IMPORT
+    { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader },
+    { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock },
+    { "decodeSeqHeaders (1st block)", prepSequences, local_ZSTD_decodeSeqHeaders },
+#endif
 };
 #define NB_SCENARIOS (sizeof(kScenarios) / sizeof(kScenarios[0]))
 
@@ -622,12 +620,12 @@ static int benchMem(unsigned benchNb,
     ZSTD_CCtx_setParameter(g_cstream, ZSTD_c_targetLength, (int)cparams.targetLength);
     ZSTD_CCtx_setParameter(g_cstream, ZSTD_c_strategy, (int)cparams.strategy);
 
-
     /* Preparation */
     payload = &cparams;
     {   PrepResult pr = prep_f(prepBuff, prepBuffCapacity, origSrc, origSrcSize, cLevel);
         prepBuffSize = pr.prepSize;
         origSrcSize = pr.fixedOrigSize;
+        if (pr.moddedDstCapacity) dstBuffCapacity = pr.moddedDstCapacity;
     }
     if (prepBuffSize==0) goto _cleanOut; /* failed preparation */
 
@@ -669,7 +667,7 @@ static int benchMem(unsigned benchNb,
             {   BMK_runTime_t const newResult = BMK_extract_runTime(bOutcome);
                 if (newResult.nanoSecPerRun < bestResult.nanoSecPerRun )
                     bestResult.nanoSecPerRun = newResult.nanoSecPerRun;
-                DISPLAY("\r%2u#%-29.29s:%8.1f MB/s  (%8u) ",
+                DISPLAY("\r%2u#%-31.31s:%8.1f MB/s  (%8u) ",
                         benchNb, benchName,
                         (double)origSrcSize * TIMELOOP_NANOSEC / bestResult.nanoSecPerRun / MB_UNIT,
                         (unsigned)newResult.sumOfReturn );
