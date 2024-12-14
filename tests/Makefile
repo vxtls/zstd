@@ -150,12 +150,12 @@ $(FULLBENCHS) : LDFLAGS += $(MULTITHREAD_LD)
 $(FULLBENCHS) : DEBUGFLAGS = -DNDEBUG  # turn off assert() for speed measurements
 $(FULLBENCHS) : DEBUGLEVEL = 0  # turn off assert() for speed measurements
 $(FULLBENCHS) : $(ZSTD_FILES)
-$(FULLBENCHS) : $(PRGDIR)/datagen.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c fullbench.c
+$(FULLBENCHS) : $(PRGDIR)/datagen.c $(PRGDIR)/lorem.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c fullbench.c
 	$(LINK.c) $^ -o $@$(EXT)
 
 CLEAN += fullbench-lib
 fullbench-lib : CPPFLAGS += -DXXH_NAMESPACE=ZSTD_
-fullbench-lib : $(PRGDIR)/datagen.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c $(LIB_SRCDIR)/libzstd.a fullbench.c
+fullbench-lib : $(PRGDIR)/datagen.c $(PRGDIR)/lorem.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c $(LIB_SRCDIR)/libzstd.a fullbench.c
 	$(LINK.c) $^ -o $@$(EXT)
 
 # note : broken : requires symbols unavailable from dynamic library
