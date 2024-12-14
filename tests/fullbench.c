@@ -33,6 +33,7 @@
 #include "zstd.h"        /* ZSTD_versionString */
 #include "util.h"        /* time functions */
 #include "datagen.h"
+#include "lorem.h"
 #include "benchfn.h"     /* CustomBench */
 #include "benchzstd.h"   /* MB_UNIT */
 
@@ -50,7 +51,7 @@
 
 #define DEFAULT_CLEVEL 1
 
-#define COMPRESSIBILITY_DEFAULT 0.50
+#define COMPRESSIBILITY_DEFAULT (-1.0)
 static const size_t kSampleSizeDefault = 10000000;
 
 #define TIMELOOP_NANOSEC      (1*1000000000ULL) /* 1 second */
@@ -754,6 +755,11 @@ _cleanOut:
 
 
 #define BENCH_ALL_SCENARIOS 999
+/*
+ * if @compressibility < 0.0, use Lorem Ipsum generator
+ * otherwise, @compressibility is expected to be between 0.0 and 1.0
+ * if scenarioID == BENCH_ALL_SCENARIOS, all scenarios will be run on the sample
+*/
 static int benchSample(U32 scenarioID,
                        size_t benchedSize, double compressibility,
                        int cLevel, ZSTD_compressionParameters cparams)
@@ -763,7 +769,12 @@ static int benchSample(U32 scenarioID,
     if (!origBuff) { DISPLAY("\nError: not enough memory!\n"); return 12; }
 
     /* Fill buffer */
-    RDG_genBuffer(origBuff, benchedSize, compressibility, 0.0, 0);
+    if (compressibility < 0.0) {
+        LOREM_genBuffer(origBuff, benchedSize, 0);
+    } else {
+        RDG_genBuffer(origBuff, benchedSize, compressibility, 0.0, 0);
+
+    }
 
     /* bench */
     DISPLAY("\r%70s\r", "");
