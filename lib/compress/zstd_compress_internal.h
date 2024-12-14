@@ -741,14 +741,6 @@ ZSTD_storeSeqOnly(SeqStore_t* seqStorePtr,
               U32 offBase,
               size_t matchLength)
 {
-#if defined(DEBUGLEVEL) && (DEBUGLEVEL >= 6)
-    static const BYTE* g_start = NULL;
-    if (g_start==NULL) g_start = (const BYTE*)literals;  /* note : index only works for compression within a single segment */
-    {   U32 const pos = (U32)((const BYTE*)literals - g_start);
-        DEBUGLOG(6, "Cpos%7u :%3u literals, match%4u bytes at offBase%7u",
-               pos, (U32)litLength, (U32)matchLength, (U32)offBase);
-    }
-#endif
     assert((size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart) < seqStorePtr->maxNbSeq);
     /* update seqStorePtr->lit, so that we know how many literals were or will be copied */
     assert(seqStorePtr->maxNbLit <= 128 KB);

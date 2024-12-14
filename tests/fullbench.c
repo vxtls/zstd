@@ -12,6 +12,7 @@
 /*_************************************
 *  Includes
 **************************************/
+#include <limits.h>
 #define ZSTD_DISABLE_DEPRECATE_WARNINGS /* No deprecation warnings, we still bench some deprecated functions */
 #include "util.h"        /* Compiler options, UTIL_GetFileSize */
 #include <stdlib.h>      /* malloc */
@@ -272,7 +273,7 @@ local_ZSTD_decodeLiteralsHeader(const void* src, size_t srcSize, void* dst, size
     return ZSTD_decodeLiteralsHeader(g_zdc, src, srcSize);
 }
 
-static PrepResult prepSequences(const void* src, size_t srcSize, int cLevel)
+static PrepResult prepSequences1stBlock(const void* src, size_t srcSize, int cLevel)
 {
     PrepResult r = PREPRESULT_INIT;
     size_t const dstCapacity = srcSize;
@@ -456,7 +457,6 @@ local_ZSTD_decompressStream(const void* src, size_t srcSize,
     return buffOut.pos;
 }
 
-#ifndef ZSTD_DLL_IMPORT
 static size_t local_ZSTD_compressContinue(const void* src, size_t srcSize,
                                           void* dst, size_t dstCapacity,
                                           void* payload)
@@ -523,11 +523,54 @@ static size_t local_ZSTD_decompressContinue(const void* src, size_t srcSize,
 
     return regeneratedSize;
 }
-#endif
+
+static PrepResult prepSequences(const void* src, size_t srcSize, int cLevel)
+{
+    PrepResult r = PREPRESULT_INIT;
+    size_t const dstCapacity = ZSTD_compressBound(srcSize);
+    void* const dst = malloc(dstCapacity);
+    size_t const prepCapacity = dstCapacity * 4;
+    void* prepBuffer = malloc(prepCapacity);
+    void* sequencesStart = (char*)prepBuffer + 2*sizeof(unsigned);
+    ZSTD_Sequence* const seqs = sequencesStart;
+    size_t const seqsCapacity = prepCapacity / sizeof(ZSTD_Sequence);
+    size_t nbSeqs;
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_compressionLevel, cLevel);
+    nbSeqs = ZSTD_generateSequences(g_zcc, seqs, seqsCapacity, src, srcSize);
+    CONTROL(srcSize < UINT_MAX);
+    MEM_write32(prepBuffer, (U32)srcSize);
+    MEM_write32((char*)prepBuffer+4, (U32)nbSeqs);
+    memcpy(seqs + nbSeqs, src, srcSize);
+    r.prepBuffer = prepBuffer;
+    r.prepSize = 8 + sizeof(ZSTD_Sequence)*nbSeqs + srcSize;
+    r.dst = dst;
+    r.dstCapacity = dstCapacity;
+    return r;
+}
+
+static size_t local_compressSequences(const void* input, size_t inputSize,
+                                      void* dst, size_t dstCapacity,
+                                      void* payload)
+{
+    const char* ip = input;
+    size_t srcSize = MEM_read32(ip);
+    size_t nbSeqs = MEM_read32(ip+=4);
+    const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
+    const void* src = (ip+=nbSeqs * sizeof(ZSTD_Sequence));
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
+    assert(8 + nbSeqs * sizeof(ZSTD_Sequence) + srcSize == inputSize); (void)inputSize;
+    (void)payload;
+
+    return ZSTD_compressSequences(g_zcc, dst, dstCapacity, seqs, nbSeqs, src, srcSize);
+}
+
 
 static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
 {
     PrepResult r = PREPRESULT_INIT;
+    (void)cLevel;
     r.prepSize = srcSize;
     r.prepBuffer = malloc(srcSize);
     CONTROL(r.prepBuffer != NULL);
@@ -577,10 +620,11 @@ static BenchScenario kScenarios[] = {
     { "compressStream2, continue", NULL, local_ZSTD_compressStream2_continue },
     { "compressStream2, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue },
     { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
+    { "compressSequences", prepSequences, local_compressSequences },
 #ifndef ZSTD_DLL_IMPORT
     { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader },
     { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock },
-    { "decodeSeqHeaders (1st block)", prepSequences, local_ZSTD_decodeSeqHeaders },
+    { "decodeSeqHeaders (1st block)", prepSequences1stBlock, local_ZSTD_decodeSeqHeaders },
 #endif
 };
 #define NB_SCENARIOS (sizeof(kScenarios) / sizeof(kScenarios[0]))
