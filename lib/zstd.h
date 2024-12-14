@@ -1328,7 +1328,7 @@ typedef struct {
                                *
                                * Note: This field is optional. ZSTD_generateSequences() will calculate the value of
                                * 'rep', but repeat offsets do not necessarily need to be calculated from an external
-                               * sequence provider's perspective. For example, ZSTD_compressSequences() does not
+                               * sequence provider perspective. For example, ZSTD_compressSequences() does not
                                * use this 'rep' field at all (as of now).
                                */
 } ZSTD_Sequence;
@@ -1588,7 +1588,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_sequenceBound(size_t srcSize);
  * @param zc The compression context to be used for ZSTD_compress2(). Set any
  *           compression parameters you need on this context.
  * @param outSeqs The output sequences buffer of size @p outSeqsSize
- * @param outSeqsSize The size of the output sequences buffer.
+ * @param outSeqsCapacity The size of the output sequences buffer.
  *                    ZSTD_sequenceBound(srcSize) is an upper bound on the number
  *                    of sequences that can be generated.
  * @param src The source buffer to generate sequences from of size @p srcSize.
@@ -1606,7 +1606,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_sequenceBound(size_t srcSize);
 ZSTD_DEPRECATED("For debugging only, will be replaced by ZSTD_extractSequences()")
 ZSTDLIB_STATIC_API size_t
 ZSTD_generateSequences(ZSTD_CCtx* zc,
-                       ZSTD_Sequence* outSeqs, size_t outSeqsSize,
+                       ZSTD_Sequence* outSeqs, size_t outSeqsCapacity,
                        const void* src, size_t srcSize);
 
 /*! ZSTD_mergeBlockDelimiters() :

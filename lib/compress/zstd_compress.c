@@ -7058,7 +7058,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
     size_t cSize = 0;
 
     /* Transparent initialization stage, same as compressStream2() */
-    DEBUGLOG(4, "ZSTD_compressSequences (dstCapacity=%zu)", dstCapacity);
+    DEBUGLOG(4, "ZSTD_compressSequences (nbSeqs=%zu,dstCapacity=%zu)", inSeqsSize, dstCapacity);
     assert(cctx != NULL);
     FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, srcSize), "CCtx initialization failed");
 
