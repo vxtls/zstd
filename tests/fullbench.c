@@ -128,18 +128,26 @@ local_ZSTD_compress_freshCCtx(const void* src, size_t srcSize,
 }
 
 typedef struct {
+    void* prepBuffer;
     size_t prepSize;
-    size_t fixedOrigSize;
-    size_t moddedDstCapacity; /* if ==0, no modification */
+    void* dst;
+    size_t dstCapacity;
+    size_t fixedOrigSize;  /* optional, 0 means "no modification" */
 } PrepResult;
-#define PREPRESULT_INIT { 0,0,0 }
+#define PREPRESULT_INIT { NULL, 0, NULL, 0, 0 }
 
-static PrepResult prepDecompress(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
+static PrepResult prepDecompress(const void* src, size_t srcSize, int cLevel)
 {
-    size_t cSize = ZSTD_compress(dst, dstCapacity, src, srcSize, cLevel);
+    size_t prepCapacity = ZSTD_compressBound(srcSize);
+    void* prepBuffer = malloc(prepCapacity);
+    size_t cSize = ZSTD_compress(prepBuffer, prepCapacity, src, srcSize, cLevel);
+    void* dst = malloc(srcSize);
     PrepResult r = PREPRESULT_INIT;
+    assert(dst != NULL);
+    r.prepBuffer = prepBuffer;
     r.prepSize = cSize;
-    r.fixedOrigSize = srcSize;
+    r.dst = dst;
+    r.dstCapacity = srcSize;
     return r;
 }
 
@@ -162,30 +170,35 @@ static size_t local_ZSTD_decompressDCtx(const void* src, size_t srcSize,
 
 #ifndef ZSTD_DLL_IMPORT
 
-static PrepResult prepLiterals(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
+static PrepResult prepLiterals(const void* src, size_t srcSize, int cLevel)
 {
-    size_t frameHeaderSize;
+    PrepResult r = PREPRESULT_INIT;
+    size_t dstCapacity = srcSize;
+    void* dst = malloc(dstCapacity);
+    void* prepBuffer;
     size_t prepSize = ZSTD_compress(dst, dstCapacity, src, srcSize, cLevel);
-    frameHeaderSize = ZSTD_frameHeaderSize(dst, ZSTD_FRAMEHEADERSIZE_PREFIX(ZSTD_f_zstd1));
+    size_t frameHeaderSize = ZSTD_frameHeaderSize(dst, ZSTD_FRAMEHEADERSIZE_PREFIX(ZSTD_f_zstd1));
     CONTROL(!ZSTD_isError(frameHeaderSize));
     /* check block is compressible, hence contains a literals section */
     {   blockProperties_t bp;
         ZSTD_getcBlockSize((char*)dst+frameHeaderSize, dstCapacity, &bp);  /* Get 1st block type */
         if (bp.blockType != bt_compressed) {
-            const PrepResult r = PREPRESULT_INIT;
             DISPLAY("no compressed literals\n");
             return r;
     }   }
     {   size_t const skippedSize = frameHeaderSize + ZSTD_blockHeaderSize;
         prepSize -= skippedSize;
-        memmove(dst, (char*)dst+skippedSize, prepSize);
+        prepBuffer = malloc(prepSize);
+        CONTROL(prepBuffer != NULL);
+        memmove(prepBuffer, (char*)dst+skippedSize, prepSize);
     }
     ZSTD_decompressBegin(g_zdc);
-    {   PrepResult r = PREPRESULT_INIT;
-        r.prepSize = prepSize;
-        r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;    /* speed relative to block */
-        return r;
-    }
+    r.prepBuffer = prepBuffer;
+    r.prepSize = prepSize;
+    r.dst = dst;
+    r.dstCapacity = dstCapacity;
+    r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;    /* speed relative to block */
+    return r;
 }
 
 extern size_t ZSTD_decodeLiteralsBlock_wrapper(ZSTD_DCtx* dctx,
@@ -259,8 +272,11 @@ local_ZSTD_decodeLiteralsHeader(const void* src, size_t srcSize, void* dst, size
     return ZSTD_decodeLiteralsHeader(g_zdc, src, srcSize);
 }
 
-static PrepResult prepSequences(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
+static PrepResult prepSequences(const void* src, size_t srcSize, int cLevel)
 {
+    PrepResult r = PREPRESULT_INIT;
+    size_t const dstCapacity = srcSize;
+    void* dst = malloc(dstCapacity);
     const BYTE* ip = dst;
     const BYTE* iend;
     {   size_t const cSize = ZSTD_compress(dst, dstCapacity, src, srcSize, cLevel);
@@ -275,7 +291,6 @@ static PrepResult prepSequences(void* dst, size_t dstCapacity, const void* src, 
     {   blockProperties_t bp;
         size_t const cBlockSize = ZSTD_getcBlockSize(ip, dstCapacity, &bp);   /* Get 1st block type */
         if (bp.blockType != bt_compressed) {
-            const PrepResult r = PREPRESULT_INIT;
             DISPLAY("no compressed sequences\n");
             return r;
         }
@@ -285,12 +300,14 @@ static PrepResult prepSequences(void* dst, size_t dstCapacity, const void* src, 
     ZSTD_decompressBegin(g_zdc);
     CONTROL(iend > ip);
     ip += ZSTD_decodeLiteralsBlock_wrapper(g_zdc, ip, (size_t)(iend-ip), dst, dstCapacity);   /* skip literal segment */
-    {   PrepResult r = PREPRESULT_INIT;
-        r.prepSize = (size_t)(iend-ip);
-        r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;   /* speed relative to block */
-        memmove(dst, ip, r.prepSize);   /* copy rest of block (it starts by SeqHeader) */
-        return r;
-    }
+    r.prepSize = (size_t)(iend-ip);
+    r.prepBuffer = malloc(r.prepSize);
+    CONTROL(r.prepBuffer != NULL);
+    memmove(r.prepBuffer, ip, r.prepSize);   /* copy rest of block (it starts by SeqHeader) */
+    r.dst = dst;
+    r.dstCapacity = dstCapacity;
+    r.fixedOrigSize = srcSize > 128 KB ? 128 KB : srcSize;   /* speed relative to block */
+    return r;
 }
 
 static size_t
@@ -508,24 +525,33 @@ static size_t local_ZSTD_decompressContinue(const void* src, size_t srcSize,
 }
 #endif
 
-static PrepResult prepCopy(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
+static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
 {
-    const PrepResult r = { srcSize, srcSize, 0};
-    (void)cLevel;
-    assert(dstCapacity >= srcSize);
-    memcpy(dst, src, srcSize);
+    PrepResult r = PREPRESULT_INIT;
+    r.prepSize = srcSize;
+    r.prepBuffer = malloc(srcSize);
+    CONTROL(r.prepBuffer != NULL);
+    memcpy(r.prepBuffer, src, srcSize);
+    r.dstCapacity = ZSTD_compressBound(srcSize);
+    r.dst = malloc(r.dstCapacity);
+    CONTROL(r.dst != NULL);
     return r;
 }
 
-static PrepResult prepShorterDstCapacity(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel)
+static PrepResult prepShorterDstCapacity(const void* src, size_t srcSize, int cLevel)
 {
-    PrepResult r = prepCopy(dst, dstCapacity, src, srcSize, cLevel);
-    r.moddedDstCapacity = dstCapacity - 1;
+    PrepResult r = prepCopy(src, srcSize, cLevel);
+    assert(r.dstCapacity > 1);
+    r.dstCapacity -= 1;
     return r;
 }
+
+/*_*******************************************************
+*  List of Scenarios
+*********************************************************/
 
 /* if PrepFunction_f returns 0, benchmarking is cancelled */
-typedef PrepResult (*PrepFunction_f)(void* dst, size_t dstCapacity, const void* src, size_t srcSize, int cLevel);
+typedef PrepResult (*PrepFunction_f)(const void* src, size_t srcSize, int cLevel);
 typedef size_t (*BenchedFunction_f)(const void* src, size_t srcSize, void* dst, size_t dstSize, void* opaque);
 
 typedef struct {
@@ -560,16 +586,16 @@ static BenchScenario kScenarios[] = {
 #define NB_SCENARIOS (sizeof(kScenarios) / sizeof(kScenarios[0]))
 
 /*_*******************************************************
-*  Bench functions
+*  Bench loop
 *********************************************************/
 static int benchMem(unsigned scenarioID,
                     const void* origSrc, size_t origSrcSize,
                     int cLevel, ZSTD_compressionParameters cparams)
 {
-    size_t dstCapacity = ZSTD_compressBound(origSrcSize);
-    void*  dst;
-    void*  prepBuff;
-    size_t prepBuffCapacity=dstCapacity, prepBuffSize;
+    size_t dstCapacity = 0;
+    void*  dst = NULL;
+    void*  prepBuff = NULL;
+    size_t prepBuffSize = 0;
     void*  payload;
     const char* benchName;
     BMK_benchFn_t benchFunction;
@@ -583,14 +609,7 @@ static int benchMem(unsigned scenarioID,
     prep_f = kScenarios[scenarioID].preparation_f;
     if (prep_f == NULL) prep_f = prepCopy; /* default */
 
-    /* Allocation */
-    dst  = malloc(dstCapacity);
-    prepBuff = malloc(prepBuffCapacity);
-    if ((!dst) || (!prepBuff)) {
-        DISPLAY("\nError: not enough memory!\n");
-        free(dst); free(prepBuff);
-        return 12;
-    }
+    /* Initialization */
     if (g_zcc==NULL) g_zcc = ZSTD_createCCtx();
     if (g_zdc==NULL) g_zdc = ZSTD_createDCtx();
     if (g_cstream==NULL) g_cstream = ZSTD_createCStream();
@@ -620,10 +639,12 @@ static int benchMem(unsigned scenarioID,
 
     /* Preparation */
     payload = &cparams;
-    {   PrepResult pr = prep_f(prepBuff, prepBuffCapacity, origSrc, origSrcSize, cLevel);
+    {   PrepResult pr = prep_f(origSrc, origSrcSize, cLevel);
+        dst = pr.dst;
+        dstCapacity = pr.dstCapacity;
+        prepBuff = pr.prepBuffer;
         prepBuffSize = pr.prepSize;
-        origSrcSize = pr.fixedOrigSize;
-        if (pr.moddedDstCapacity) dstCapacity = pr.moddedDstCapacity;
+        if (pr.fixedOrigSize) origSrcSize = pr.fixedOrigSize;
     }
     if (prepBuffSize==0) goto _cleanOut; /* failed preparation */
 
