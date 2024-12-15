@@ -65,7 +65,7 @@ typedef struct {
     /**
      * Non-zero if streaming (de)compression is used.
      */
-    unsigned streaming;
+    int streaming;
     /**
      * The dictionary ID.
      */
