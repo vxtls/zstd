@@ -567,6 +567,63 @@ static size_t local_compressSequences(const void* input, size_t inputSize,
     return ZSTD_compressSequences(g_zcc, dst, dstCapacity, seqs, nbSeqs, src, srcSize);
 }
 
+static PrepResult prepSequencesAndLiterals(const void* src, size_t srcSize, int cLevel)
+{
+    PrepResult r = PREPRESULT_INIT;
+    size_t const dstCapacity = ZSTD_compressBound(srcSize);
+    void* const dst = malloc(dstCapacity);
+    size_t const prepCapacity = dstCapacity * 4;
+    void* prepBuffer = malloc(prepCapacity);
+    void* sequencesStart = (char*)prepBuffer + 3*sizeof(unsigned);
+    ZSTD_Sequence* const seqs = sequencesStart;
+    size_t const seqsCapacity = prepCapacity / sizeof(ZSTD_Sequence);
+    size_t nbSeqs;
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_compressionLevel, cLevel);
+    nbSeqs = ZSTD_generateSequences(g_zcc, seqs, seqsCapacity, src, srcSize);
+    CONTROL(srcSize < UINT_MAX);
+    MEM_write32(prepBuffer, (U32)srcSize);
+    MEM_write32((char*)prepBuffer+4, (U32)nbSeqs);
+    /* copy literals */
+    {   char* const litStart = (char*)(seqs + nbSeqs);
+        size_t nbLiterals = 0;
+        const char* ip = src;
+        size_t n;
+        for (n=0; n<nbSeqs; n++) {
+            size_t const litSize = seqs[n].litLength;
+            memcpy(litStart + nbLiterals, ip, litSize);
+            ip += litSize;
+            nbLiterals += litSize;
+        }
+        MEM_write32((char*)prepBuffer+8, (U32)nbLiterals);
+        r.prepBuffer = prepBuffer;
+        r.prepSize = 12 + sizeof(ZSTD_Sequence)*nbSeqs + nbLiterals;
+        r.dst = dst;
+        r.dstCapacity = dstCapacity;
+    }
+    return r;
+}
+
+static size_t
+local_compressSequencesAndLiterals(const void* input, size_t inputSize,
+                                      void* dst, size_t dstCapacity,
+                                      void* payload)
+{
+    const char* ip = input;
+    size_t srcSize = MEM_read32(ip);
+    size_t nbSeqs = MEM_read32(ip+=4);
+    size_t nbLiterals = MEM_read32(ip+=4);
+    const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
+    const void* literals = (ip+=nbSeqs * sizeof(ZSTD_Sequence));
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
+    assert(8 + nbSeqs * sizeof(ZSTD_Sequence) + nbLiterals == inputSize); (void)inputSize;
+    (void)payload;
+
+    return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals, srcSize);
+}
+
+
 
 static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
 {
@@ -622,6 +679,7 @@ static BenchScenario kScenarios[] = {
     { "compressStream2, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue },
     { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
     { "compressSequences", prepSequences, local_compressSequences },
+    { "compressSequencesAndLiterals", prepSequencesAndLiterals, local_compressSequencesAndLiterals },
 #ifndef ZSTD_DLL_IMPORT
     { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader },
     { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock },
@@ -723,7 +781,7 @@ static int benchMem(unsigned scenarioID,
             BMK_runOutcome_t const bOutcome = BMK_benchTimedFn(tfs, bp);
 
             if (!BMK_isSuccessful_runOutcome(bOutcome)) {
-                DISPLAY("ERROR benchmarking function ! ! \n");
+                DISPLAY("ERROR: Scenario %u: %s \n", scenarioID, ZSTD_getErrorName(BMK_extract_errorResult(bOutcome)));
                 errorcode = 1;
                 goto _cleanOut;
             }

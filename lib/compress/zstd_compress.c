@@ -7227,7 +7227,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                                         inSeqs, nbSequences, seqPos);
         U32 const lastBlock = (blockSize == remaining);
         FORWARD_IF_ERROR(blockSize, "Error while trying to determine block size");
-        RETURN_ERROR_IF(!lastBlock, GENERIC, "Only supports single block");
+        RETURN_ERROR_IF(!lastBlock, srcSize_wrong, "Only supports single block");
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
 
