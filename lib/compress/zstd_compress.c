@@ -6585,11 +6585,11 @@ size_t ZSTD_compress2(ZSTD_CCtx* cctx,
 }
 
 /* ZSTD_validateSequence() :
- * @offCode : is presumed to follow format required by ZSTD_storeSeq()
+ * @offBase : must use the format required by ZSTD_storeSeq()
  * @returns a ZSTD error code if sequence is not valid
  */
 static size_t
-ZSTD_validateSequence(U32 offCode, U32 matchLength, U32 minMatch,
+ZSTD_validateSequence(U32 offBase, U32 matchLength, U32 minMatch,
                       size_t posInSrc, U32 windowLog, size_t dictSize, int useSequenceProducer)
 {
     U32 const windowSize = 1u << windowLog;
@@ -6600,7 +6600,7 @@ ZSTD_validateSequence(U32 offCode, U32 matchLength, U32 minMatch,
      */
     size_t const offsetBound = posInSrc > windowSize ? (size_t)windowSize : posInSrc + (size_t)dictSize;
     size_t const matchLenLowerBound = (minMatch == 3 || useSequenceProducer) ? 3 : 4;
-    RETURN_ERROR_IF(offCode > OFFSET_TO_OFFBASE(offsetBound), externalSequences_invalid, "Offset too large!");
+    RETURN_ERROR_IF(offBase > OFFSET_TO_OFFBASE(offsetBound), externalSequences_invalid, "Offset too large!");
     /* Validate maxNbSeq is large enough for the given matchLength and minMatch */
     RETURN_ERROR_IF(matchLength < matchLenLowerBound, externalSequences_invalid, "Matchlength too small for the minMatch");
     return 0;
