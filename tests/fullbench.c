@@ -618,7 +618,7 @@ local_compressSequencesAndLiterals(const void* input, size_t inputSize,
     ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
     ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
 # if 0 /* for tests */
-    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_searchForExternalRepcodes, ZSTD_ps_enable);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_repcodeResolution, ZSTD_ps_enable);
 #endif
     assert(8 + nbSeqs * sizeof(ZSTD_Sequence) + nbLiterals == inputSize); (void)inputSize;
     (void)payload;
