@@ -634,7 +634,7 @@ ZSTD_bounds ZSTD_cParam_getBounds(ZSTD_cParameter param)
         bounds.upperBound = ZSTD_BLOCKSIZE_MAX;
         return bounds;
 
-    case ZSTD_c_searchForExternalRepcodes:
+    case ZSTD_c_repcodeResolution:
         bounds.lowerBound = (int)ZSTD_ps_auto;
         bounds.upperBound = (int)ZSTD_ps_disable;
         return bounds;
@@ -708,7 +708,7 @@ static int ZSTD_isUpdateAuthorized(ZSTD_cParameter param)
     case ZSTD_c_prefetchCDictTables:
     case ZSTD_c_enableSeqProducerFallback:
     case ZSTD_c_maxBlockSize:
-    case ZSTD_c_searchForExternalRepcodes:
+    case ZSTD_c_repcodeResolution:
     default:
         return 0;
     }
@@ -768,7 +768,7 @@ size_t ZSTD_CCtx_setParameter(ZSTD_CCtx* cctx, ZSTD_cParameter param, int value)
     case ZSTD_c_prefetchCDictTables:
     case ZSTD_c_enableSeqProducerFallback:
     case ZSTD_c_maxBlockSize:
-    case ZSTD_c_searchForExternalRepcodes:
+    case ZSTD_c_repcodeResolution:
         break;
 
     default: RETURN_ERROR(parameter_unsupported, "unknown parameter");
@@ -1020,8 +1020,8 @@ size_t ZSTD_CCtxParams_setParameter(ZSTD_CCtx_params* CCtxParams,
         CCtxParams->maxBlockSize = (size_t)value;
         return CCtxParams->maxBlockSize;
 
-    case ZSTD_c_searchForExternalRepcodes:
-        BOUNDCHECK(ZSTD_c_searchForExternalRepcodes, value);
+    case ZSTD_c_repcodeResolution:
+        BOUNDCHECK(ZSTD_c_repcodeResolution, value);
         CCtxParams->searchForExternalRepcodes = (ZSTD_ParamSwitch_e)value;
         return CCtxParams->searchForExternalRepcodes;
 
@@ -1169,7 +1169,7 @@ size_t ZSTD_CCtxParams_getParameter(
     case ZSTD_c_maxBlockSize:
         *value = (int)CCtxParams->maxBlockSize;
         break;
-    case ZSTD_c_searchForExternalRepcodes:
+    case ZSTD_c_repcodeResolution:
         *value = (int)CCtxParams->searchForExternalRepcodes;
         break;
     default: RETURN_ERROR(parameter_unsupported, "unknown parameter");

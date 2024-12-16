@@ -1637,6 +1637,12 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  *    If ZSTD_c_blockDelimiters == ZSTD_sf_explicitBlockDelimiters, the array of ZSTD_Sequence is expected to contain
  *    valid block delimiters (defined in ZSTD_Sequence). Behavior is undefined if no block delimiters are provided.
  *
+ *    When ZSTD_c_blockDelimiters == ZSTD_sf_explicitBlockDelimiters, it's possible to decide generating repcodes
+ *    using the advanced parameter ZSTD_c_repcodeResolution. Repcodes will improve compression ratio, though the benefit
+ *    can vary greatly depending on Sequences. On the other hand, repcode resolution is an expensive operation.
+ *    By default, it's disabled at low (<10) compression levels, and enabled above the threshold (>=10).
+ *    ZSTD_c_repcodeResolution makes it possible to directly manage this processing in either direction.
+ *
  *    If ZSTD_c_validateSequences == 0, this function blindly accepts the Sequences provided. Invalid Sequences cause undefined
  *    behavior. If ZSTD_c_validateSequences == 1, then the function will detect invalid Sequences (see doc/zstd_compression_format.md for
  *    specifics regarding offset/matchlength requirements) and then bail out and return an error.
@@ -2301,18 +2307,18 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  */
 #define ZSTD_c_maxBlockSize ZSTD_c_experimentalParam18
 
-/* ZSTD_c_searchForExternalRepcodes
- * Note: for now, this param only has an effect if ZSTD_c_blockDelimiters is
- * set to ZSTD_sf_explicitBlockDelimiters. That may change in the future.
+/* ZSTD_c_repcodeResolution
+ * This parameter only has an effect if ZSTD_c_blockDelimiters is
+ * set to ZSTD_sf_explicitBlockDelimiters (may change in the future).
  *
- * This parameter affects how zstd parses external sequences, such as sequences
- * provided through compressSequences() and variant API
+ * This parameter affects how zstd parses external sequences,
+ * provided via the ZSTD_compressSequences*() API
  * or from an external block-level sequence producer.
  *
- * If set to ZSTD_ps_enable, the library will check for repeated offsets in
+ * If set to ZSTD_ps_enable, the library will check for repeated offsets within
  * external sequences, even if those repcodes are not explicitly indicated in
  * the "rep" field. Note that this is the only way to exploit repcode matches
- * while using compressSequences() or an external sequence producer, since zstd
+ * while using compressSequences*() or an external sequence producer, since zstd
  * currently ignores the "rep" field of external sequences.
  *
  * If set to ZSTD_ps_disable, the library will not exploit repeated offsets in
@@ -2323,7 +2329,8 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * The default value is ZSTD_ps_auto, for which the library will enable/disable
  * based on compression level (currently: level<10 disables, level>=10 enables).
  */
-#define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19
+#define ZSTD_c_repcodeResolution ZSTD_c_experimentalParam19
+#define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19 /* older name */
 
 
 /*! ZSTD_CCtx_getParameter() :
