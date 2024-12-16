@@ -742,13 +742,10 @@ ZSTD_storeSeqOnly(SeqStore_t* seqStorePtr,
               size_t matchLength)
 {
     assert((size_t)(seqStorePtr->sequences - seqStorePtr->sequencesStart) < seqStorePtr->maxNbSeq);
-    /* update seqStorePtr->lit, so that we know how many literals were or will be copied */
-    assert(seqStorePtr->maxNbLit <= 128 KB);
-    assert(seqStorePtr->lit + litLength <= seqStorePtr->litStart + seqStorePtr->maxNbLit);
-    seqStorePtr->lit += litLength;
 
     /* literal Length */
-    if (litLength>0xFFFF) {
+    assert(litLength <= ZSTD_BLOCKSIZE_MAX);
+    if (UNLIKELY(litLength>0xFFFF)) {
         assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
         seqStorePtr->longLengthType = ZSTD_llt_literalLength;
         seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
@@ -759,9 +756,10 @@ ZSTD_storeSeqOnly(SeqStore_t* seqStorePtr,
     seqStorePtr->sequences[0].offBase = offBase;
 
     /* match Length */
+    assert(matchLength <= ZSTD_BLOCKSIZE_MAX);
     assert(matchLength >= MINMATCH);
     {   size_t const mlBase = matchLength - MINMATCH;
-        if (mlBase>0xFFFF) {
+        if (UNLIKELY(mlBase>0xFFFF)) {
             assert(seqStorePtr->longLengthType == ZSTD_llt_none); /* there can only be a single long length */
             seqStorePtr->longLengthType = ZSTD_llt_matchLength;
             seqStorePtr->longLengthPos = (U32)(seqStorePtr->sequences - seqStorePtr->sequencesStart);
@@ -811,6 +809,7 @@ ZSTD_storeSeq(SeqStore_t* seqStorePtr,
     } else {
         ZSTD_safecopyLiterals(seqStorePtr->lit, literals, litEnd, litLimit_w);
     }
+    seqStorePtr->lit += litLength;
 
     ZSTD_storeSeqOnly(seqStorePtr, litLength, offBase, matchLength);
 }
