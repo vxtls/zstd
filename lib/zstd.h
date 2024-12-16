@@ -1665,13 +1665,14 @@ ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * aka all literals already extracted and laid out into a single continuous buffer.
  * This can be useful if the process generating the sequences also happens to generate the buffer of literals,
  * thus skipping an extraction + caching stage.
- * It's essentially a speed optimization when the right conditions are met,
+ * It's merely a speed optimization when the right conditions are met,
  * but it also features the following limitations:
  * - Only supports explicit delimiter mode
  * - Supports 1 block only (max input 128 KB)
  * - Not compatible with frame checksum, which must disabled
  * - Can fail (return an error) when input data cannot be compress sufficiently
- * Also, to be valid, @litSize must be equal to the sum of all @.litLength fields in @inSeqs.
+ * - @litSize must be == sum of all @.litLength fields in @inSeqs. Discrepancy will generate an error.
+ * - the buffer @literals must be larger than @litSize by at least 8 bytes.
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
@@ -2301,9 +2302,12 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 #define ZSTD_c_maxBlockSize ZSTD_c_experimentalParam18
 
 /* ZSTD_c_searchForExternalRepcodes
+ * Note: for now, this param only has an effect if ZSTD_c_blockDelimiters is
+ * set to ZSTD_sf_explicitBlockDelimiters. That may change in the future.
+ *
  * This parameter affects how zstd parses external sequences, such as sequences
- * provided through the compressSequences() API or from an external block-level
- * sequence producer.
+ * provided through compressSequences() and variant API
+ * or from an external block-level sequence producer.
  *
  * If set to ZSTD_ps_enable, the library will check for repeated offsets in
  * external sequences, even if those repcodes are not explicitly indicated in
@@ -2317,10 +2321,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * compression ratio.
  *
  * The default value is ZSTD_ps_auto, for which the library will enable/disable
- * based on compression level.
- *
- * Note: for now, this param only has an effect if ZSTD_c_blockDelimiters is
- * set to ZSTD_sf_explicitBlockDelimiters. That may change in the future.
+ * based on compression level (currently: level<10 disables, level>=10 enables).
  */
 #define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19
 
