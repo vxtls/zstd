@@ -7107,7 +7107,7 @@ ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
-                        ZSTD_ParamSwitch_e externalRepSearch,
+                        int const repcodeResolution,
                         int const checkSequences)
 {
     U32 idx = seqPos->idx;
@@ -7136,7 +7136,7 @@ ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
         U32 const matchLength = inSeqs[idx].matchLength;
         U32 offBase;
 
-        if (externalRepSearch == ZSTD_ps_disable) {
+        if (!repcodeResolution) {
             offBase = OFFSET_TO_OFFBASE(inSeqs[idx].offset);
         } else {
             U32 const ll0 = (litLength == 0);
@@ -7173,9 +7173,8 @@ ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
     }
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
-    assert(externalRepSearch != ZSTD_ps_auto);
     assert(idx >= startIdx);
-    if (externalRepSearch == ZSTD_ps_disable && idx != startIdx) {
+    if (!repcodeResolution && idx != startIdx) {
         U32* const rep = updatedRepcodes.rep;
         U32 lastSeqIdx = idx - 1; /* index of last non-block-delimiter sequence */
 
@@ -7206,16 +7205,18 @@ typedef size_t (*ZSTD_transferSequencesOnly_f) (ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
-                        ZSTD_ParamSwitch_e externalRepSearch);
+                        int const repcodeResolution);
 
 static size_t
 ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
-                        ZSTD_ParamSwitch_e externalRepSearch)
+                        int const repcodeResolution)
 {
-    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx, seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize, externalRepSearch, 0);
+    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
+                seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize,
+                repcodeResolution, 0);
 }
 
 static size_t
@@ -7223,9 +7224,11 @@ ZSTD_transferSequencesOnly_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
-                        ZSTD_ParamSwitch_e externalRepSearch)
+                        int const repcodeResolution)
 {
-    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx, seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize, externalRepSearch, 1);
+    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
+                seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize,
+                repcodeResolution, 1);
 }
 
 static size_t
@@ -7238,6 +7241,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     size_t remaining = srcSize;
     ZSTD_SequencePosition seqPos = {0, 0, 0};
     BYTE* op = (BYTE*)dst;
+    int const repcodeResolution = (cctx->appliedParams.searchForExternalRepcodes == ZSTD_ps_enable);
     const ZSTD_transferSequencesOnly_f transfer = cctx->appliedParams.validateSequences ?
             ZSTD_transferSequencesOnly_wBlockDelim_andCheckSequences
             : ZSTD_transferSequencesOnly_wBlockDelim;
@@ -7246,6 +7250,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
         RETURN_ERROR(GENERIC, "This mode is only compatible with explicit delimiters");
     }
+    assert(cctx->appliedParams.searchForExternalRepcodes != ZSTD_ps_auto);
 
     /* Special case: empty frame */
     if (remaining == 0) {
@@ -7272,7 +7277,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                             &seqPos, &litConsumed,
                             inSeqs, nbSequences,
                             blockSize,
-                            cctx->appliedParams.searchForExternalRepcodes);
+                            repcodeResolution);
         RETURN_ERROR_IF(blockSize != remaining, externalSequences_invalid, "Must consume the entire block");
         RETURN_ERROR_IF(litConsumed != litSize, externalSequences_invalid, "Must consume the exact amount of literals provided");
         FORWARD_IF_ERROR(blockSize, "Bad sequence copy");
@@ -7299,9 +7304,9 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
          * but it could be considered from analyzing the sequence directly */
 
         if (compressedSeqsSize == 0) {
-            /* Sending uncompressed blocks is difficult, because we don't have the source.
-             * In theory, we could use the sequences to regenerate the source, like a decompressor,
-             * but it's complex and likely overkill.
+            /* Sending uncompressed blocks is difficult, because the source is not provided.
+             * In theory, one could use the sequences to regenerate the source, like a decompressor,
+             * but it's complex, and memory hungry, killing the purpose of this variant.
              * Current outcome: generate an error code.
              */
             RETURN_ERROR(dstSize_tooSmall, "Data is not compressible"); /* note: error code might be misleading */
