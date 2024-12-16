@@ -7112,20 +7112,24 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
     U32 idx = seqPos->idx;
     U32 const startIdx = idx;
     Repcodes_t updatedRepcodes;
-    U32 dictSize;
+    U32 dictSize = 0;
     size_t startPosInSrc = seqPos->posInSrc;
     size_t litConsumed = 0;
 
     DEBUGLOG(5, "ZSTD_transferSequencesOnly_wBlockDelim (blockSize = %zu)", blockSize);
 
-    if (cctx->cdict) {
-        dictSize = (U32)cctx->cdict->dictContentSize;
-    } else if (cctx->prefixDict.dict) {
-        dictSize = (U32)cctx->prefixDict.dictSize;
-    } else {
-        dictSize = 0;
+    /* dictSize is useful to check offset within Sequence validation */
+    if (cctx->appliedParams.validateSequences) {
+        if (cctx->cdict) {
+            dictSize = (U32)cctx->cdict->dictContentSize;
+        } else if (cctx->prefixDict.dict) {
+            dictSize = (U32)cctx->prefixDict.dictSize;
+        }
     }
+
     ZSTD_memcpy(updatedRepcodes.rep, cctx->blockState.prevCBlock->rep, sizeof(Repcodes_t));
+
+    /* Convert Sequences from public format to internal format */
     for (; idx < nbSequences && (inSeqs[idx].matchLength != 0 || inSeqs[idx].offset != 0); ++idx) {
         U32 const litLength = inSeqs[idx].litLength;
         U32 const matchLength = inSeqs[idx].matchLength;
@@ -7140,8 +7144,8 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
         }
 
         DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
-        seqPos->posInSrc += litLength + matchLength;
         if (cctx->appliedParams.validateSequences) {
+            seqPos->posInSrc += litLength + matchLength;
             FORWARD_IF_ERROR(ZSTD_validateSequence(offBase, matchLength, cctx->appliedParams.cParams.minMatch,
                                                 seqPos->posInSrc,
                                                 cctx->appliedParams.cParams.windowLog, dictSize,
@@ -7156,13 +7160,16 @@ ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
 
     /* last sequence (only literals) */
     {   size_t const lastLitLength = inSeqs[idx].litLength;
-        seqPos->posInSrc += lastLitLength;
-        cctx->seqStore.lit += lastLitLength;  /* register proper length */
         litConsumed += lastLitLength;
+        if (cctx->appliedParams.validateSequences) {
+            seqPos->posInSrc += lastLitLength;
+            /* blockSize must be exactly correct (checked before calling this function) */
+            RETURN_ERROR_IF((seqPos->posInSrc - startPosInSrc) != blockSize, externalSequences_invalid, "mismatch between Sequences and specified blockSize");
+        } else {
+            /* blockSize presumed exactly correct (checked before calling this function) */
+            seqPos->posInSrc += blockSize;
+        }
     }
-
-    /* blockSize must be exactly correct (checked before calling this function) */
-    assert((seqPos->posInSrc - startPosInSrc) == blockSize); (void)startPosInSrc;
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
     assert(externalRepSearch != ZSTD_ps_auto);
@@ -7236,8 +7243,8 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                                    inSeqs, nbSequences,
                                    blockSize,
                                    cctx->appliedParams.searchForExternalRepcodes);
-        RETURN_ERROR_IF(blockSize != remaining, GENERIC, "Must consume the entire block");
-        RETURN_ERROR_IF(litConsumed != litSize, GENERIC, "Must consume the exact amount of literals provided");
+        RETURN_ERROR_IF(blockSize != remaining, externalSequences_invalid, "Must consume the entire block");
+        RETURN_ERROR_IF(litConsumed != litSize, externalSequences_invalid, "Must consume the exact amount of literals provided");
         FORWARD_IF_ERROR(blockSize, "Bad sequence copy");
 
         /* Note: when blockSize is very small, other variant send it uncompressed.
