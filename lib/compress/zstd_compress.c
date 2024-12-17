@@ -7103,7 +7103,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * @blockSize must be exactly correct.
  */
 FORCE_INLINE_TEMPLATE size_t
-ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
+ZSTD_convertSequences_wBlockDelim_internal(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
@@ -7207,25 +7207,25 @@ typedef size_t (*ZSTD_transferSequencesOnly_f) (ZSTD_CCtx* cctx,
                         int const repcodeResolution);
 
 static size_t
-ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
+ZSTD_convertSequences_wBlockDelim(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
-    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
+    return ZSTD_convertSequences_wBlockDelim_internal(cctx,
                 seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 0);
 }
 
 static size_t
-ZSTD_transferSequencesOnly_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
+ZSTD_convertSequences_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
-    return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
+    return ZSTD_convertSequences_wBlockDelim_internal(cctx,
                 seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 1);
 }
@@ -7242,8 +7242,8 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     BYTE* op = (BYTE*)dst;
     int const repcodeResolution = (cctx->appliedParams.searchForExternalRepcodes == ZSTD_ps_enable);
     const ZSTD_transferSequencesOnly_f transfer = cctx->appliedParams.validateSequences ?
-            ZSTD_transferSequencesOnly_wBlockDelim_andCheckSequences
-            : ZSTD_transferSequencesOnly_wBlockDelim;
+            ZSTD_convertSequences_wBlockDelim_andCheckSequences
+            : ZSTD_convertSequences_wBlockDelim;
 
     DEBUGLOG(4, "ZSTD_compressSequencesAndLiterals_internal: nbSeqs=%zu, litSize=%zu", nbSequences, litSize);
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
