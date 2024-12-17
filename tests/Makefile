@@ -148,7 +148,7 @@ fullbench32: CPPFLAGS += -m32
 $(FULLBENCHS) : CPPFLAGS += $(MULTITHREAD_CPP) -Wno-deprecated-declarations
 $(FULLBENCHS) : LDFLAGS += $(MULTITHREAD_LD)
 $(FULLBENCHS) : DEBUGFLAGS = -DNDEBUG  # turn off assert() for speed measurements
-$(FULLBENCHS) : DEBUGLEVEL = 0  # turn off assert() for speed measurements
+$(FULLBENCHS) : DEBUGLEVEL ?= 0  # turn off assert() for speed measurements
 $(FULLBENCHS) : $(ZSTD_FILES)
 $(FULLBENCHS) : $(PRGDIR)/datagen.c $(PRGDIR)/lorem.c $(PRGDIR)/util.c $(PRGDIR)/timefn.c $(PRGDIR)/benchfn.c fullbench.c
 	$(LINK.c) $^ -o $@$(EXT)
