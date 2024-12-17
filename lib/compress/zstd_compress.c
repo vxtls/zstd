@@ -7104,7 +7104,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
  */
 FORCE_INLINE_TEMPLATE size_t
 ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
+                        ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution,
@@ -7197,37 +7197,36 @@ ZSTD_transferSequencesOnly_wBlockDelim_internal(ZSTD_CCtx* cctx,
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     seqPos->idx = idx+1;
-    *litConsumedPtr = litConsumed;
-    return blockSize;
+    return litConsumed;
 }
 
 typedef size_t (*ZSTD_transferSequencesOnly_f) (ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
+                        ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution);
 
 static size_t
 ZSTD_transferSequencesOnly_wBlockDelim(ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
+                        ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
     return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
-                seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize,
+                seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 0);
 }
 
 static size_t
 ZSTD_transferSequencesOnly_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos, size_t* litConsumedPtr,
+                        ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
     return ZSTD_transferSequencesOnly_wBlockDelim_internal(cctx,
-                seqPos, litConsumedPtr, inSeqs, nbSequences, blockSize,
+                seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 1);
 }
 
@@ -7269,28 +7268,26 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                                         inSeqs, nbSequences, seqPos);
         U32 const lastBlock = (blockSize == remaining);
         FORWARD_IF_ERROR(blockSize, "Error while trying to determine block size");
-        RETURN_ERROR_IF(!lastBlock, srcSize_wrong, "Only supports single block");
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
 
-        blockSize = transfer(cctx,
-                            &seqPos, &litConsumed,
+        litConsumed = transfer(cctx,
+                            &seqPos,
                             inSeqs, nbSequences,
                             blockSize,
                             repcodeResolution);
-        RETURN_ERROR_IF(blockSize != remaining, externalSequences_invalid, "Must consume the entire block");
-        RETURN_ERROR_IF(litConsumed != litSize, externalSequences_invalid, "Must consume the exact amount of literals provided");
-        FORWARD_IF_ERROR(blockSize, "Bad sequence copy");
+        FORWARD_IF_ERROR(litConsumed, "Bad sequence conversion");
+        RETURN_ERROR_IF(litConsumed > litSize, externalSequences_invalid, "discrepancy between literals buffer and Sequences");
 
         /* Note: when blockSize is very small, other variant send it uncompressed.
-         * Here, we still send the sequences, because we don't have the source to send it uncompressed.
-         * In theory, it would be possible to reproduce the source from the sequences,
-         * but that's pretty complex and memory intensive, which goes against the principles of this variant. */
+         * Here, we still send the sequences, because we don't have the original source to send it uncompressed.
+         * One could imagine it possible to reproduce the source from the sequences,
+         * but that's complex and costly memory intensive, which goes against the objectives of this variant. */
 
         RETURN_ERROR_IF(dstCapacity < ZSTD_blockHeaderSize, dstSize_tooSmall, "not enough dstCapacity to write a new compressed block");
         compressedSeqsSize = ZSTD_entropyCompressSeqStore_wExtLitBuffer(
                                 op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
-                                literals, litSize,
+                                literals, litConsumed,
                                 blockSize,
                                 &cctx->seqStore,
                                 &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy,
@@ -7299,17 +7296,19 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                                 cctx->bmi2);
         FORWARD_IF_ERROR(compressedSeqsSize, "Compressing sequences of block failed");
         DEBUGLOG(5, "Compressed sequences size: %zu", compressedSeqsSize);
+        litSize -= litConsumed;
+        literals = (const char*)literals + litConsumed;
 
         /* Note: difficult to check source for RLE block when only Literals are provided,
          * but it could be considered from analyzing the sequence directly */
 
         if (compressedSeqsSize == 0) {
-            /* Sending uncompressed blocks is difficult, because the source is not provided.
+            /* Sending uncompressed blocks is out of reach, because the source is not provided.
              * In theory, one could use the sequences to regenerate the source, like a decompressor,
              * but it's complex, and memory hungry, killing the purpose of this variant.
              * Current outcome: generate an error code.
              */
-            RETURN_ERROR(dstSize_tooSmall, "Data is not compressible"); /* note: error code might be misleading */
+            RETURN_ERROR(dstSize_tooSmall, "Data is not compressible"); /* note: error code could be clearer */
         } else {
             U32 cBlockHeader;
             assert(compressedSeqsSize > 1); /* no RLE */
@@ -7338,6 +7337,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
         DEBUGLOG(5, "cSize running total: %zu (remaining dstCapacity=%zu)", cSize, dstCapacity);
     }
 
+    RETURN_ERROR_IF(litSize != 0, externalSequences_invalid, "literals must be entirely and exactly consumed");
     DEBUGLOG(4, "cSize final total: %zu", cSize);
     return cSize;
 }
