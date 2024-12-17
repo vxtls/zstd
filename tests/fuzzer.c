@@ -3880,7 +3880,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
     DISPLAYLEVEL(3, "test%3i : ZSTD_compressSequencesAndLiterals : ", testNb++);
     {
-        const size_t srcSize = 100 KB;
+        const size_t srcSize = 500 KB;
         const BYTE* const src = (BYTE*)CNBuffer;
         BYTE* const dst = (BYTE*)compressedBuffer;
         const size_t dstCapacity = ZSTD_compressBound(srcSize);

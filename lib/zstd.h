@@ -1674,10 +1674,9 @@ ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * It's a speed optimization, useful when the right conditions are met,
  * but it also features the following limitations:
  * - Only supports explicit delimiter mode
- * - Supports 1 block only (max input 128 KB)
  * - Not compatible with frame checksum, which must disabled
- * - Can fail (return an error) when input data cannot be compress sufficiently
- * - @litSize must be == sum of all @.litLength fields in @inSeqs. Discrepancy will generate an error.
+ * - If any block is incompressible, will fail and return an error
+ * - @litSize must be == sum of all @.litLength fields in @inSeqs. Any discrepancy will generate an error.
  * - the buffer @literals must be larger than @litSize by at least 8 bytes.
  * @return : final compressed size, or a ZSTD error code.
  */
