@@ -12,8 +12,9 @@
 /*_************************************
 *  Includes
 **************************************/
-#include <limits.h>
+#define _CRT_SECURE_NO_WARNINGS /* disable Visual warning that it doesn't like fopen() */
 #define ZSTD_DISABLE_DEPRECATE_WARNINGS /* No deprecation warnings, we still bench some deprecated functions */
+#include <limits.h>
 #include "util.h"        /* Compiler options, UTIL_GetFileSize */
 #include <stdlib.h>      /* malloc */
 #include <stdio.h>       /* fprintf, fopen, ftello64 */
