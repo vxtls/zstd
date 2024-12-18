@@ -20,11 +20,6 @@
 ******************************************/
 #include "zstd_deps.h"    /* size_t, ptrdiff_t */
 
-#if defined(FSE_STATIC_LINKING_ONLY) && !defined(FSE_H_FSE_STATIC_LINKING_ONLY)
-#define FSE_H_FSE_STATIC_LINKING_ONLY
-#include "bitstream.h"
-#endif 
-
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -230,12 +225,16 @@ FSE_decompress_usingDTable() result will tell how many bytes were regenerated (<
 If there is an error, the function will return an error code, which can be tested using FSE_isError(). (ex: dst buffer too small)
 */
 
+#if defined (__cplusplus)
+}
+#endif
+
 #endif  /* FSE_H */
 
 
 #if defined(FSE_STATIC_LINKING_ONLY) && !defined(FSE_H_FSE_STATIC_LINKING_ONLY)
 #define FSE_H_FSE_STATIC_LINKING_ONLY
-
+#include "bitstream.h"
 
 /* *****************************************
 *  Static allocation
@@ -257,6 +256,10 @@ If there is an error, the function will return an error code, which can be teste
 /* *****************************************
  *  FSE advanced API
  ***************************************** */
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 unsigned FSE_optimalTableLog_internal(unsigned maxTableLog, size_t srcSize, unsigned maxSymbolValue, unsigned minus);
 /**< same as FSE_optimalTableLog(), which used `minus==2` */
@@ -631,10 +634,8 @@ MEM_STATIC unsigned FSE_endOfDState(const FSE_DState_t* DStatePtr)
 
 #define FSE_TABLESTEP(tableSize) (((tableSize)>>1) + ((tableSize)>>3) + 3)
 
-
-#endif /* FSE_STATIC_LINKING_ONLY */
-
-
 #if defined (__cplusplus)
 }
 #endif
+
+#endif /* FSE_STATIC_LINKING_ONLY */
