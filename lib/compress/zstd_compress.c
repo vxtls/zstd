@@ -3240,12 +3240,6 @@ static size_t ZSTD_fastSequenceLengthSum(ZSTD_Sequence const* seqBuf, size_t seq
     return litLenSum + matchLenSum;
 }
 
-typedef struct {
-    U32 idx;            /* Index in array of ZSTD_Sequence */
-    U32 posInSequence;  /* Position within sequence at idx */
-    size_t posInSrc;    /* Number of bytes given by sequences provided so far */
-} ZSTD_SequencePosition;
-
 static size_t
 ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
                                    ZSTD_SequencePosition* seqPos,
@@ -7103,7 +7097,7 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * @blockSize must be exactly correct.
  */
 FORCE_INLINE_TEMPLATE size_t
-ZSTD_convertSequences_wBlockDelim_internal(ZSTD_CCtx* cctx,
+ZSTD_convertBlockSequences_wBlockDelim_internal(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
@@ -7200,32 +7194,39 @@ ZSTD_convertSequences_wBlockDelim_internal(ZSTD_CCtx* cctx,
     return litConsumed;
 }
 
-typedef size_t (*ZSTD_transferSequencesOnly_f) (ZSTD_CCtx* cctx,
+/* for tests only */
+void CCTX_resetSeqStore(ZSTD_CCtx* cctx)
+{
+    cctx->seqStore.sequences = cctx->seqStore.sequencesStart;
+    cctx->seqStore.lit = cctx->seqStore.litStart;
+}
+
+typedef size_t (*ZSTD_convertBlockSequences_f) (ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution);
 
-static size_t
-ZSTD_convertSequences_wBlockDelim(ZSTD_CCtx* cctx,
+size_t
+ZSTD_convertBlockSequences_wBlockDelim(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
-    return ZSTD_convertSequences_wBlockDelim_internal(cctx,
+    return ZSTD_convertBlockSequences_wBlockDelim_internal(cctx,
                 seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 0);
 }
 
 static size_t
-ZSTD_convertSequences_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
+ZSTD_convertBlockSequences_wBlockDelim_andCheckSequences(ZSTD_CCtx* cctx,
                         ZSTD_SequencePosition* seqPos,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         size_t blockSize,
                         int const repcodeResolution)
 {
-    return ZSTD_convertSequences_wBlockDelim_internal(cctx,
+    return ZSTD_convertBlockSequences_wBlockDelim_internal(cctx,
                 seqPos, inSeqs, nbSequences, blockSize,
                 repcodeResolution, 1);
 }
@@ -7241,9 +7242,9 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     ZSTD_SequencePosition seqPos = {0, 0, 0};
     BYTE* op = (BYTE*)dst;
     int const repcodeResolution = (cctx->appliedParams.searchForExternalRepcodes == ZSTD_ps_enable);
-    const ZSTD_transferSequencesOnly_f transfer = cctx->appliedParams.validateSequences ?
-            ZSTD_convertSequences_wBlockDelim_andCheckSequences
-            : ZSTD_convertSequences_wBlockDelim;
+    const ZSTD_convertBlockSequences_f convertBlockSequences = cctx->appliedParams.validateSequences ?
+            ZSTD_convertBlockSequences_wBlockDelim_andCheckSequences
+            : ZSTD_convertBlockSequences_wBlockDelim;
 
     DEBUGLOG(4, "ZSTD_compressSequencesAndLiterals_internal: nbSeqs=%zu, litSize=%zu", nbSequences, litSize);
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
@@ -7271,7 +7272,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
         assert(blockSize <= remaining);
         ZSTD_resetSeqStore(&cctx->seqStore);
 
-        litConsumed = transfer(cctx,
+        litConsumed = convertBlockSequences(cctx,
                             &seqPos,
                             inSeqs, nbSequences,
                             blockSize,

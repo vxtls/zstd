@@ -21,6 +21,7 @@
 #include <assert.h>
 
 #include "mem.h"         /* U32 */
+#include "compress/zstd_compress_internal.h"
 #ifndef ZSTD_DLL_IMPORT
     #include "zstd_internal.h"   /* ZSTD_decodeSeqHeaders, ZSTD_blockHeaderSize, ZSTD_getcBlockSize, blockType_e, KB, MB */
     #include "decompress/zstd_decompress_internal.h"   /* ZSTD_DCtx struct */
@@ -627,6 +628,64 @@ local_compressSequencesAndLiterals(const void* input, size_t inputSize,
     return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals, srcSize);
 }
 
+static PrepResult prepConvertSequences(const void* src, size_t srcSize, int cLevel)
+{
+    PrepResult r = PREPRESULT_INIT;
+    size_t const prepCapacity = srcSize * 4;
+    void* prepBuffer = malloc(prepCapacity);
+    void* sequencesStart = (char*)prepBuffer + 2*sizeof(unsigned);
+    ZSTD_Sequence* const seqs = sequencesStart;
+    size_t const seqsCapacity = prepCapacity / sizeof(ZSTD_Sequence);
+    size_t totalNbSeqs, nbSeqs, blockSize=0;
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_compressionLevel, cLevel);
+    totalNbSeqs = ZSTD_generateSequences(g_zcc, seqs, seqsCapacity, src, srcSize);
+    CONTROL(!ZSTD_isError(totalNbSeqs));
+    /* find nb sequences in first block */
+    {   size_t n;
+        for (n=0; n<totalNbSeqs; n++) {
+            if (seqs[n].matchLength == 0) break;
+            blockSize += seqs[n].litLength + seqs[n].matchLength;
+        }
+        blockSize += seqs[n].litLength;
+        nbSeqs = n+1;
+#if 0
+        printf("found %zu sequences representing a first block of size %zu\n", nbSeqs, blockSize);
+#endif
+    }
+    /* generate benchmarked input */
+    CONTROL(blockSize < UINT_MAX);
+    MEM_write32(prepBuffer, (U32)blockSize);
+    MEM_write32((char*)prepBuffer+4, (U32)nbSeqs);
+    memcpy(seqs + nbSeqs, src, srcSize);
+    r.prepBuffer = prepBuffer;
+    r.prepSize = 8 + sizeof(ZSTD_Sequence)*nbSeqs + srcSize;
+    r.fixedOrigSize = blockSize;
+    return r;
+}
+
+static size_t
+local_convertSequences(const void* input, size_t inputSize,
+                       void* dst, size_t dstCapacity,
+                       void* payload)
+{
+    ZSTD_SequencePosition seqPos = { 0, 0 , 0 };
+    const char* ip = input;
+    size_t const blockSize = MEM_read32(ip);
+    size_t const nbSeqs = MEM_read32(ip+=4);
+    const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    CCTX_resetSeqStore(g_zcc);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
+# if 0 /* for tests */
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_repcodeResolution, ZSTD_ps_enable);
+#endif
+    assert(8 + nbSeqs * sizeof(ZSTD_Sequence) == inputSize); (void)inputSize;
+    (void)dst; (void)dstCapacity;
+    (void)payload;
+
+    return ZSTD_convertBlockSequences_wBlockDelim(g_zcc, &seqPos, seqs, nbSeqs, blockSize, 0);
+}
 
 
 static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
@@ -684,6 +743,7 @@ static BenchScenario kScenarios[] = {
     { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
     { "compressSequences", prepSequences, local_compressSequences },
     { "compressSequencesAndLiterals", prepSequencesAndLiterals, local_compressSequencesAndLiterals },
+    { "convertSequences (1st block)", prepConvertSequences, local_convertSequences },
 #ifndef ZSTD_DLL_IMPORT
     { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader },
     { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock },

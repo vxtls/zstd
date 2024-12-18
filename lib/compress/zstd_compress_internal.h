@@ -1522,6 +1522,22 @@ size_t ZSTD_loadCEntropy(ZSTD_compressedBlockState_t* bs, void* workspace,
 
 void ZSTD_reset_compressedBlockState(ZSTD_compressedBlockState_t* bs);
 
+typedef struct {
+    U32 idx;            /* Index in array of ZSTD_Sequence */
+    U32 posInSequence;  /* Position within sequence at idx */
+    size_t posInSrc;    /* Number of bytes given by sequences provided so far */
+} ZSTD_SequencePosition;
+
+size_t
+ZSTD_convertBlockSequences_wBlockDelim(ZSTD_CCtx* cctx,
+                        ZSTD_SequencePosition* seqPos,
+                        const ZSTD_Sequence* const inSeqs, size_t nbSequences,
+                        size_t blockSize,
+                        int const repcodeResolution);
+
+/* for tests only */
+void CCTX_resetSeqStore(ZSTD_CCtx* cctx);
+
 /* ==============================================================
  * Private declarations
  * These prototypes shall only be called from within lib/compress
