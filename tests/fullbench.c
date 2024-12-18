@@ -659,7 +659,7 @@ static PrepResult prepConvertSequences(const void* src, size_t srcSize, int cLev
     MEM_write32((char*)prepBuffer+4, (U32)nbSeqs);
     memcpy(seqs + nbSeqs, src, srcSize);
     r.prepBuffer = prepBuffer;
-    r.prepSize = 8 + sizeof(ZSTD_Sequence)*nbSeqs + srcSize;
+    r.prepSize = 8 + sizeof(ZSTD_Sequence) * nbSeqs;
     r.fixedOrigSize = blockSize;
     return r;
 }
