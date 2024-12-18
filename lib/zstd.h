@@ -1675,6 +1675,7 @@ ZSTD_compressSequences(ZSTD_CCtx* cctx,
  * but it also features the following limitations:
  * - Only supports explicit delimiter mode
  * - Not compatible with frame checksum, which must disabled
+ * - Does not write the content size in frame header
  * - If any block is incompressible, will fail and return an error
  * - @litSize must be == sum of all @.litLength fields in @inSeqs. Any discrepancy will generate an error.
  * - the buffer @literals must be larger than @litSize by at least 8 bytes.
@@ -1684,7 +1685,7 @@ ZSTDLIB_STATIC_API size_t
 ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
                                   void* dst, size_t dstCapacity,
                             const ZSTD_Sequence* inSeqs, size_t nbSequences,
-                            const void* literals, size_t litSize, size_t srcSize);
+                            const void* literals, size_t litSize);
 
 
 /*! ZSTD_writeSkippableFrame() :
