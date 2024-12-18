@@ -12,10 +12,6 @@
  * You may select, at your option, one of the above-listed licenses.
 ****************************************************************** */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #ifndef HUF_H_298734234
 #define HUF_H_298734234
 
@@ -25,6 +21,9 @@ extern "C" {
 #define FSE_STATIC_LINKING_ONLY
 #include "fse.h"
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /* ***   Tool functions *** */
 #define HUF_BLOCKSIZE_MAX (128 * 1024)   /**< maximum input size for a single block compressed with HUF_compress */

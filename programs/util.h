@@ -20,6 +20,9 @@
 #include <sys/types.h>    /* stat, utime */
 #include <sys/stat.h>     /* stat, chmod */
 #include "../lib/common/mem.h"          /* U64 */
+#if not (defined(_MSC_VER) || defined(__MINGW32__) || defined (__MSVCRT__))
+#include <libgen.h>
+#endif
 
 /*-************************************************************
 *  Fix fseek()'s 2GiB barrier with MSVC, macOS, *BSD, MinGW
@@ -116,7 +119,6 @@ int UTIL_requireUserConfirmation(const char* prompt, const char* abortMsg, const
 #define STRDUP(s) _strdup(s)
 #else
 #define PATH_SEP '/'
-#include <libgen.h>
 #define STRDUP(s) strdup(s)
 #endif
 

@@ -11,14 +11,21 @@
 #ifndef ZSTD_FILEIO_COMMON_H
 #define ZSTD_FILEIO_COMMON_H
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #include "../lib/common/mem.h"     /* U32, U64 */
 #include "fileio_types.h"
 #include "platform.h"
 #include "timefn.h"     /* UTIL_getTime, UTIL_clockSpanMicro */
+
+#if !(defined(_MSC_VER) && _MSC_VER >= 1400) \
+    && !(!defined(__64BIT__) && (PLATFORM_POSIX_VERSION >= 200112L)) \
+    && !(defined(__MINGW32__) && !defined(__STRICT_ANSI__) && !defined(__NO_MINGW_LFS) && defined(__MSVCRT__)) \
+    && (defined(_WIN32) && !defined(__DJGPP__))
+#   include <windows.h>
+#endif
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /*-*************************************
 *  Macros
@@ -89,7 +96,6 @@ extern UTIL_time_t g_displayClock;
 #   define LONG_SEEK fseeko64
 #   define LONG_TELL ftello64
 #elif defined(_WIN32) && !defined(__DJGPP__)
-#   include <windows.h>
     static int LONG_SEEK(FILE* file, __int64 offset, int origin) {
         LARGE_INTEGER off;
         DWORD method;

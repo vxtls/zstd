@@ -11,11 +11,6 @@
  * in the COPYING file in the root directory of this source tree).
  * You may select, at your option, one of the above-listed licenses.
 ****************************************************************** */
-
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #ifndef FSE_H
 #define FSE_H
 
@@ -25,6 +20,14 @@ extern "C" {
 ******************************************/
 #include "zstd_deps.h"    /* size_t, ptrdiff_t */
 
+#if defined(FSE_STATIC_LINKING_ONLY) && !defined(FSE_H_FSE_STATIC_LINKING_ONLY)
+#define FSE_H_FSE_STATIC_LINKING_ONLY
+#include "bitstream.h"
+#endif 
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /*-*****************************************
 *  FSE_PUBLIC_API : control library symbols visibility
@@ -232,9 +235,6 @@ If there is an error, the function will return an error code, which can be teste
 
 #if defined(FSE_STATIC_LINKING_ONLY) && !defined(FSE_H_FSE_STATIC_LINKING_ONLY)
 #define FSE_H_FSE_STATIC_LINKING_ONLY
-
-/* *** Dependency *** */
-#include "bitstream.h"
 
 
 /* *****************************************
