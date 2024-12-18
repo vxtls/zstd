@@ -7299,7 +7299,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     /* Transparent initialization stage, same as compressStream2() */
     DEBUGLOG(4, "ZSTD_compressSequencesAndLiterals (dstCapacity=%zu)", dstCapacity);
     assert(cctx != NULL);
-    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_continue, ZSTD_CONTENTSIZE_UNKNOWN), "CCtx initialization failed");
+    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_continue, 0), "CCtx initialization failed");
 
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
         RETURN_ERROR(frameParameter_unsupported, "This mode is only compatible with explicit delimiters");
@@ -7349,7 +7349,6 @@ size_t ZSTD_flushStream(ZSTD_CStream* zcs, ZSTD_outBuffer* output)
     input.size = input.pos; /* do not ingest more input during flush */
     return ZSTD_compressStream2(zcs, output, &input, ZSTD_e_flush);
 }
-
 
 size_t ZSTD_endStream(ZSTD_CStream* zcs, ZSTD_outBuffer* output)
 {
