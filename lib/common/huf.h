@@ -278,8 +278,8 @@ size_t HUF_readDTableX1_wksp(HUF_DTable* DTable, const void* src, size_t srcSize
 size_t HUF_readDTableX2_wksp(HUF_DTable* DTable, const void* src, size_t srcSize, void* workSpace, size_t wkspSize, int flags);
 #endif
 
-#endif   /* HUF_H_298734234 */
-
 #if defined (__cplusplus)
 }
 #endif
+
+#endif   /* HUF_H_298734234 */
