@@ -140,7 +140,6 @@ int ZSTD_pthread_cond_destroy(ZSTD_pthread_cond_t* cond);
 #else  /* ZSTD_MULTITHREAD not defined */
 /* No multithreading support */
 
-
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -160,10 +159,11 @@ typedef int ZSTD_pthread_cond_t;
 
 /* do not use ZSTD_pthread_t */
 
-#endif /* ZSTD_MULTITHREAD */
-
 #if defined (__cplusplus)
 }
 #endif
+
+#endif /* ZSTD_MULTITHREAD */
+
 
 #endif /* THREADING_H_938743 */
