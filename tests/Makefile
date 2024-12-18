@@ -26,6 +26,9 @@ export ZSTD_LEGACY_SUPPORT
 DEBUGLEVEL ?= 2
 export DEBUGLEVEL  # transmit value to sub-makefiles
 
+.PHONY: default
+default: fullbench
+
 LIBZSTD_MK_DIR := ../lib
 include $(LIBZSTD_MK_DIR)/libzstd.mk
 
@@ -77,9 +80,6 @@ ZSTREAM_TESTTIME ?= -T90s
 FUZZERTEST ?= -T200s
 ZSTDRTTEST = --test-large-data
 DECODECORPUS_TESTTIME ?= -T30
-
-.PHONY: default
-default: fullbench
 
 .PHONY: all
 all: fullbench fuzzer zstreamtest paramgrill datagen decodecorpus roundTripCrash poolTests

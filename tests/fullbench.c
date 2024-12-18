@@ -623,9 +623,9 @@ local_compressSequencesAndLiterals(const void* input, size_t inputSize,
     ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_repcodeResolution, ZSTD_ps_enable);
 #endif
     assert(12 + nbSeqs * sizeof(ZSTD_Sequence) + nbLiterals == inputSize); (void)inputSize;
-    (void)payload;
+    (void)payload; (void)srcSize;
 
-    return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals, srcSize);
+    return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals);
 }
 
 static PrepResult prepConvertSequences(const void* src, size_t srcSize, int cLevel)
@@ -669,22 +669,21 @@ local_convertSequences(const void* input, size_t inputSize,
                        void* dst, size_t dstCapacity,
                        void* payload)
 {
-    ZSTD_SequencePosition seqPos = { 0, 0 , 0 };
     const char* ip = input;
     size_t const blockSize = MEM_read32(ip);
     size_t const nbSeqs = MEM_read32(ip+=4);
     const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
     ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
-    CCTX_resetSeqStore(g_zcc);
+    ZSTD_resetSeqStore(&g_zcc->seqStore);
     ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
 # if 0 /* for tests */
     ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_repcodeResolution, ZSTD_ps_enable);
 #endif
     assert(8 + nbSeqs * sizeof(ZSTD_Sequence) == inputSize); (void)inputSize;
     (void)dst; (void)dstCapacity;
-    (void)payload;
+    (void)payload; (void)blockSize;
 
-    return ZSTD_convertBlockSequences_wBlockDelim(g_zcc, &seqPos, seqs, nbSeqs, blockSize, 0);
+    return ZSTD_convertBlockSequences(g_zcc, seqs, nbSeqs, 0);
 }
 
 

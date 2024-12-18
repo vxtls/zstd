@@ -484,7 +484,7 @@ struct ZSTD_CCtx_s {
     size_t dictContentSize;
 
     ZSTD_cwksp workspace; /* manages buffer for dynamic allocations */
-    size_t blockSize;
+    size_t blockSizeMax;
     unsigned long long pledgedSrcSizePlusOne;  /* this way, 0 (default) == unknown */
     unsigned long long consumedSrcSize;
     unsigned long long producedCSize;
@@ -1528,15 +1528,11 @@ typedef struct {
     size_t posInSrc;    /* Number of bytes given by sequences provided so far */
 } ZSTD_SequencePosition;
 
-size_t
-ZSTD_convertBlockSequences_wBlockDelim(ZSTD_CCtx* cctx,
-                        ZSTD_SequencePosition* seqPos,
+/* for benchmark */
+size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
-                        size_t blockSize,
                         int const repcodeResolution);
 
-/* for tests only */
-void CCTX_resetSeqStore(ZSTD_CCtx* cctx);
 
 /* ==============================================================
  * Private declarations
