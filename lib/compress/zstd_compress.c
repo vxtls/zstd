@@ -7291,7 +7291,7 @@ size_t
 ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
                     void* dst, size_t dstCapacity,
                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                    const void* literals, size_t litSize)
+                    const void* literals, size_t litSize, size_t srcSize)
 {
     BYTE* op = (BYTE*)dst;
     size_t cSize = 0;
@@ -7299,7 +7299,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     /* Transparent initialization stage, same as compressStream2() */
     DEBUGLOG(4, "ZSTD_compressSequencesAndLiterals (dstCapacity=%zu)", dstCapacity);
     assert(cctx != NULL);
-    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_continue, 0), "CCtx initialization failed");
+    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, srcSize), "CCtx initialization failed");
 
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
         RETURN_ERROR(frameParameter_unsupported, "This mode is only compatible with explicit delimiters");
@@ -7310,7 +7310,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
 
     /* Begin writing output, starting with frame header */
     {   size_t const frameHeaderSize = ZSTD_writeFrameHeader(op, dstCapacity,
-                    &cctx->appliedParams, ZSTD_CONTENTSIZE_UNKNOWN, cctx->dictID);
+                    &cctx->appliedParams, srcSize, cctx->dictID);
         op += frameHeaderSize;
         assert(frameHeaderSize <= dstCapacity);
         dstCapacity -= frameHeaderSize;

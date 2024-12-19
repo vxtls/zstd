@@ -1421,7 +1421,7 @@ ZSTD_compressSequences(ZSTD_CCtx* cctx,
 ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
                       void* dst, size_t dstCapacity,
                 const ZSTD_Sequence* inSeqs, size_t nbSequences,
-                const void* literals, size_t litSize);
+                const void* literals, size_t litSize, size_t srcSize);
 </b><p> This is a variant of ZSTD_compressSequences() which,
  instead of receiving (src,srcSize) as input parameter, receives (literals,litSize),
  aka all the literals, already extracted and laid out into a single continuous buffer.
