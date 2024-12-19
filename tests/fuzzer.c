@@ -3880,7 +3880,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
     DISPLAYLEVEL(3, "test%3i : ZSTD_compressSequencesAndLiterals : ", testNb++);
     {
-        const size_t srcSize = 500 KB;
+        const size_t srcSize = 497000;
         const BYTE* const src = (BYTE*)CNBuffer;
         BYTE* const dst = (BYTE*)compressedBuffer;
         const size_t dstCapacity = ZSTD_compressBound(srcSize);
@@ -3926,6 +3926,21 @@ static int basicUnitTests(U32 const seed, double compressibility)
             compressedSize = ZSTD_compressSequencesAndLiterals(cctx, dst, dstCapacity, seqs, nbSeqs, litBuffer, litSize, srcSize);
             if (ZSTD_isError(compressedSize)) {
                 DISPLAY("Error in ZSTD_compressSequencesAndLiterals()\n");
+                goto _output_error;
+            }
+        }
+        {   ZSTD_frameHeader zfh;
+            size_t const zfhStatus = ZSTD_getFrameHeader(&zfh, dst, compressedSize);
+            if (zfhStatus != 0) {
+                DISPLAY("Error reading frame header\n");
+                goto _output_error;
+            }
+            if (zfh.frameContentSize != srcSize) {
+                DISPLAY("Error: ZSTD_compressSequencesAndLiterals() did not report srcSize in the frame header\n");
+                goto _output_error;
+            }
+            if (zfh.windowSize > srcSize) {
+                DISPLAY("Error: ZSTD_compressSequencesAndLiterals() did not resized window size to smaller contentSize\n");
                 goto _output_error;
             }
         }
