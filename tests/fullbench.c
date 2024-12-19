@@ -594,7 +594,7 @@ static PrepResult prepSequencesAndLiterals(const void* src, size_t srcSize, int 
         for (n=0; n<nbSeqs; n++) {
             size_t const litSize = seqs[n].litLength;
             memcpy(litStart + nbLiterals, ip, litSize);
-            ip += litSize;
+            ip += litSize + seqs[n].matchLength;
             nbLiterals += litSize;
         }
         MEM_write32((char*)prepBuffer+8, (U32)nbLiterals);
