@@ -7319,6 +7319,9 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
         RETURN_ERROR(frameParameter_unsupported, "This mode is only compatible with explicit delimiters");
     }
+    if (cctx->appliedParams.validateSequences) {
+        RETURN_ERROR(parameter_unsupported, "This mode is not compatible with Sequence validation");
+    }
     if (cctx->appliedParams.fParams.checksumFlag) {
         RETURN_ERROR(frameParameter_unsupported, "this mode is not compatible with frame checksum");
     }
