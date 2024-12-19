@@ -683,7 +683,8 @@ local_convertSequences(const void* input, size_t inputSize,
     (void)dst; (void)dstCapacity;
     (void)payload; (void)blockSize;
 
-    return ZSTD_convertBlockSequences(g_zcc, seqs, nbSeqs, 0);
+    (void)ZSTD_convertBlockSequences(g_zcc, seqs, nbSeqs, 0);
+    return nbSeqs;
 }
 
 

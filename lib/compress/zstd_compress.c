@@ -7093,16 +7093,16 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
 }
 
 /*
+ * @return: 0 on success, or an error code.
  * Note: Sequence validation functionality has been disabled (removed).
- * This is helpful to find back simplicity, leading to performance.
+ * This is helpful to generate a lean main pipeline, improving performance.
  * It may be re-inserted later.
  */
 size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
-                        int const repcodeResolution)
+                        int repcodeResolution)
 {
     Repcodes_t updatedRepcodes;
-    size_t litConsumed = 0;
     size_t seqNb = 0;
 
     DEBUGLOG(5, "ZSTD_convertBlockSequences (nbSequences = %zu)", nbSequences);
@@ -7133,11 +7133,7 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
 
         DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
         ZSTD_storeSeqOnly(&cctx->seqStore, litLength, offBase, matchLength);
-        litConsumed += litLength;
     }
-
-    /* last sequence (only literals) */
-    litConsumed += inSeqs[nbSequences-1].litLength;
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
     if (!repcodeResolution && nbSequences > 1) {
@@ -7162,24 +7158,40 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
 
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
-    return litConsumed;
+    return 0;
 }
 
-typedef size_t (*ZSTD_convertBlockSequences_f) (ZSTD_CCtx* cctx,
-                        const ZSTD_Sequence* const inSeqs, size_t nbSequences,
-                        int const repcodeResolution);
+typedef struct {
+    size_t nbSequences;
+    size_t blockSize;
+    size_t litSize;
+} BlockSummary;
 
-static size_t getNbSequencesFor1Block(const ZSTD_Sequence* seqs, size_t nbSeqs)
+static BlockSummary get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
 {
+    size_t blockSize = 0;
+    size_t litSize = 0;
     size_t n;
     assert(seqs);
     for (n=0; n<nbSeqs; n++) {
+        blockSize += seqs[n].matchLength + seqs[n].litLength;
+        litSize += seqs[n].litLength;
         if (seqs[n].matchLength == 0) {
             assert(seqs[n].offset == 0);
-            return n+1;
+            break;
         }
     }
-    RETURN_ERROR(externalSequences_invalid, "missing final block delimiter");
+    if (n==nbSeqs) {
+        BlockSummary bs;
+        bs.nbSequences = ERROR(externalSequences_invalid);
+        return bs;
+    }
+    {   BlockSummary bs;
+        bs.nbSequences = n+1;
+        bs.blockSize = blockSize;
+        bs.litSize = litSize;
+        return bs;
+    }
 }
 
 
@@ -7187,8 +7199,9 @@ static size_t
 ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
                                 void* dst, size_t dstCapacity,
                           const ZSTD_Sequence* inSeqs, size_t nbSequences,
-                          const void* literals, size_t litSize)
+                          const void* literals, size_t litSize, size_t srcSize)
 {
+    size_t remaining = srcSize;
     size_t cSize = 0;
     BYTE* op = (BYTE*)dst;
     int const repcodeResolution = (cctx->appliedParams.searchForExternalRepcodes == ZSTD_ps_enable);
@@ -7208,31 +7221,32 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     }
 
     while (nbSequences) {
-        size_t compressedSeqsSize, cBlockSize, litConsumed;
-        size_t nbBlockSeqs = getNbSequencesFor1Block(inSeqs, nbSequences);
-        U32 const lastBlock = (nbBlockSeqs == nbSequences);
-        FORWARD_IF_ERROR(nbBlockSeqs, "Error while trying to determine nb of sequences for a block");
-        assert(nbBlockSeqs <= nbSequences);
+        size_t compressedSeqsSize, cBlockSize, conversionStatus;
+        BlockSummary const block = get1BlockSummary(inSeqs, nbSequences);
+        U32 const lastBlock = (block.nbSequences == nbSequences);
+        FORWARD_IF_ERROR(block.nbSequences, "Error while trying to determine nb of sequences for a block");
+        assert(block.nbSequences <= nbSequences);
+        RETURN_ERROR_IF(block.litSize > litSize, externalSequences_invalid, "discrepancy: Sequences require more literals than present in buffer");
         ZSTD_resetSeqStore(&cctx->seqStore);
 
-        litConsumed = ZSTD_convertBlockSequences(cctx,
-                            inSeqs, nbBlockSeqs,
+        conversionStatus = ZSTD_convertBlockSequences(cctx,
+                            inSeqs, block.nbSequences,
                             repcodeResolution);
-        FORWARD_IF_ERROR(litConsumed, "Bad sequence conversion");
-        RETURN_ERROR_IF(litConsumed > litSize, externalSequences_invalid, "discrepancy between literals buffer and Sequences");
-        inSeqs += nbBlockSeqs;
-        nbSequences -= nbBlockSeqs;
+        FORWARD_IF_ERROR(conversionStatus, "Bad sequence conversion");
+        inSeqs += block.nbSequences;
+        nbSequences -= block.nbSequences;
+        remaining -= block.blockSize;
 
         /* Note: when blockSize is very small, other variant send it uncompressed.
          * Here, we still send the sequences, because we don't have the original source to send it uncompressed.
-         * One could imagine it possible to reproduce the source from the sequences,
-         * but that's complex and costly memory intensive, which goes against the objectives of this variant. */
+         * One could imagine in theory reproducing the source from the sequences,
+         * but that's complex and costly memory intensive, and goes against the objectives of this variant. */
 
         RETURN_ERROR_IF(dstCapacity < ZSTD_blockHeaderSize, dstSize_tooSmall, "not enough dstCapacity to write a new compressed block");
 
         compressedSeqsSize = ZSTD_entropyCompressSeqStore_internal(
                                 op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
-                                literals, litConsumed,
+                                literals, block.litSize,
                                 &cctx->seqStore,
                                 &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy,
                                 &cctx->appliedParams,
@@ -7242,8 +7256,8 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
         /* note: the spec forbids for any compressed block to be larger than maximum block size */
         if (compressedSeqsSize > cctx->blockSizeMax) compressedSeqsSize = 0;
         DEBUGLOG(5, "Compressed sequences size: %zu", compressedSeqsSize);
-        litSize -= litConsumed;
-        literals = (const char*)literals + litConsumed;
+        litSize -= block.litSize;
+        literals = (const char*)literals + block.litSize;
 
         /* Note: difficult to check source for RLE block when only Literals are provided,
          * but it could be considered from analyzing the sequence directly */
@@ -7271,18 +7285,19 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
         }
 
         cSize += cBlockSize;
+        op += cBlockSize;
+        dstCapacity -= cBlockSize;
+        cctx->isFirstBlock = 0;
+        DEBUGLOG(5, "cSize running total: %zu (remaining dstCapacity=%zu)", cSize, dstCapacity);
 
         if (lastBlock) {
+            assert(nbSequences == 0);
             break;
-        } else {
-            op += cBlockSize;
-            dstCapacity -= cBlockSize;
-            cctx->isFirstBlock = 0;
         }
-        DEBUGLOG(5, "cSize running total: %zu (remaining dstCapacity=%zu)", cSize, dstCapacity);
     }
 
     RETURN_ERROR_IF(litSize != 0, externalSequences_invalid, "literals must be entirely and exactly consumed");
+    RETURN_ERROR_IF(remaining != 0, externalSequences_invalid, "Sequences must represent a total of exactly srcSize=%zu", srcSize);
     DEBUGLOG(4, "cSize final total: %zu", cSize);
     return cSize;
 }
@@ -7321,7 +7336,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     {   size_t const cBlocksSize = ZSTD_compressSequencesAndLiterals_internal(cctx,
                                             op, dstCapacity,
                                             inSeqs, inSeqsSize,
-                                            literals, litSize);
+                                            literals, litSize, srcSize);
         FORWARD_IF_ERROR(cBlocksSize, "Compressing blocks failed!");
         cSize += cBlocksSize;
         assert(cBlocksSize <= dstCapacity);

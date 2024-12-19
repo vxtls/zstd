@@ -3922,6 +3922,20 @@ static int basicUnitTests(U32 const seed, double compressibility)
                 goto _output_error;
             }
 
+            /* srcSize too large: must fail */
+            compressedSize = ZSTD_compressSequencesAndLiterals(cctx, dst, dstCapacity, seqs, nbSeqs, litBuffer, litSize, srcSize+1);
+            if (!ZSTD_isError(compressedSize)) {
+                DISPLAY("ZSTD_compressSequencesAndLiterals() should have failed: srcSize is too large\n");
+                goto _output_error;
+            }
+
+            /* srcSize too small: must fail */
+            compressedSize = ZSTD_compressSequencesAndLiterals(cctx, dst, dstCapacity, seqs, nbSeqs, litBuffer, litSize, srcSize-1);
+            if (!ZSTD_isError(compressedSize)) {
+                DISPLAY("ZSTD_compressSequencesAndLiterals() should have failed: srcSize is too small\n");
+                goto _output_error;
+            }
+
             /* correct amount of literals: should compress successfully */
             compressedSize = ZSTD_compressSequencesAndLiterals(cctx, dst, dstCapacity, seqs, nbSeqs, litBuffer, litSize, srcSize);
             if (ZSTD_isError(compressedSize)) {
