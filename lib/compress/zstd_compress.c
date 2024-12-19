@@ -7254,7 +7254,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
              * but it's complex, and memory hungry, killing the purpose of this variant.
              * Current outcome: generate an error code.
              */
-            RETURN_ERROR(dstSize_tooSmall, "Data is not compressible"); /* note: error code could be clearer */
+            RETURN_ERROR(cannotProduce_uncompressedBlock, "ZSTD_compressSequencesAndLiterals cannot generate an uncompressed block");
         } else {
             U32 cBlockHeader;
             assert(compressedSeqsSize > 1); /* no RLE */
