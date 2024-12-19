@@ -110,9 +110,6 @@ ifndef BUILD_DIR
 # determine BUILD_DIR from compilation flags
 
 libzstd.a:
-	@echo uname_target $(UNAME_TARGET)
-	@echo target_system $(TARGET_SYSTEM)
-	@echo uname $(uname)
 	$(SET_CACHE_DIRECTORY)
 
 else
