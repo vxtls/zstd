@@ -612,7 +612,7 @@ local_compressSequencesAndLiterals(const void* input, size_t inputSize,
                                     void* payload)
 {
     const char* ip = input;
-    size_t srcSize = MEM_read32(ip);
+    size_t decompressedSize = MEM_read32(ip);
     size_t nbSeqs = MEM_read32(ip+=4);
     size_t nbLiterals = MEM_read32(ip+=4);
     const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
@@ -625,7 +625,7 @@ local_compressSequencesAndLiterals(const void* input, size_t inputSize,
     assert(12 + nbSeqs * sizeof(ZSTD_Sequence) + nbLiterals == inputSize); (void)inputSize;
     (void)payload;
 
-    return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals, srcSize);
+    return ZSTD_compressSequencesAndLiterals(g_zcc, dst, dstCapacity, seqs, nbSeqs, literals, nbLiterals, nbLiterals + 8, decompressedSize);
 }
 
 static PrepResult prepConvertSequences(const void* src, size_t srcSize, int cLevel)

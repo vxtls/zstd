@@ -7306,7 +7306,8 @@ size_t
 ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
                     void* dst, size_t dstCapacity,
                     const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                    const void* literals, size_t litSize, size_t srcSize)
+                    const void* literals, size_t litSize, size_t litCapacity,
+                    size_t decompressedSize)
 {
     BYTE* op = (BYTE*)dst;
     size_t cSize = 0;
@@ -7314,7 +7315,10 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     /* Transparent initialization stage, same as compressStream2() */
     DEBUGLOG(4, "ZSTD_compressSequencesAndLiterals (dstCapacity=%zu)", dstCapacity);
     assert(cctx != NULL);
-    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, srcSize), "CCtx initialization failed");
+    if (litCapacity < litSize) {
+        RETURN_ERROR(workSpace_tooSmall, "literals buffer is not large enough: must be at least 8 bytes larger than litSize (risk of read out-of-bound)");
+    }
+    FORWARD_IF_ERROR(ZSTD_CCtx_init_compressStream2(cctx, ZSTD_e_end, decompressedSize), "CCtx initialization failed");
 
     if (cctx->appliedParams.blockDelimiters == ZSTD_sf_noBlockDelimiters) {
         RETURN_ERROR(frameParameter_unsupported, "This mode is only compatible with explicit delimiters");
@@ -7328,7 +7332,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
 
     /* Begin writing output, starting with frame header */
     {   size_t const frameHeaderSize = ZSTD_writeFrameHeader(op, dstCapacity,
-                    &cctx->appliedParams, srcSize, cctx->dictID);
+                    &cctx->appliedParams, decompressedSize, cctx->dictID);
         op += frameHeaderSize;
         assert(frameHeaderSize <= dstCapacity);
         dstCapacity -= frameHeaderSize;
@@ -7339,7 +7343,7 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
     {   size_t const cBlocksSize = ZSTD_compressSequencesAndLiterals_internal(cctx,
                                             op, dstCapacity,
                                             inSeqs, inSeqsSize,
-                                            literals, litSize, srcSize);
+                                            literals, litSize, decompressedSize);
         FORWARD_IF_ERROR(cBlocksSize, "Compressing blocks failed!");
         cSize += cBlocksSize;
         assert(cBlocksSize <= dstCapacity);
