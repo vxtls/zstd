@@ -23,10 +23,6 @@
 #   include <windows.h>
 #endif
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /*-*************************************
 *  Macros
 ***************************************/
@@ -124,7 +120,4 @@ extern UTIL_time_t g_displayClock;
 #   define LONG_TELL ftell
 #endif
 
-#if defined (__cplusplus)
-}
-#endif
 #endif /* ZSTD_FILEIO_COMMON_H */

@@ -22,11 +22,6 @@
 #define ZSTD_STATIC_LINKING_ONLY   /* ZSTD_compressionParameters */
 #include "../lib/zstd.h"     /* ZSTD_compressionParameters */
 
-
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /* ===  Constants  === */
 
 #define MB_UNIT 1000000
@@ -194,7 +189,3 @@ BMK_benchOutcome_t BMK_benchMemAdvanced(const void* srcBuffer, size_t srcSize,
 
 
 #endif   /* BENCH_ZSTD_H_3242387 */
-
-#if defined (__cplusplus)
-}
-#endif

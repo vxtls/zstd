@@ -17,11 +17,6 @@
 #define ZSTD_STATIC_LINKING_ONLY   /* ZSTD_compressionParameters */
 #include "../lib/zstd.h"           /* ZSTD_* */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
-
 /* *************************************
 *  Special i/o constants
 **************************************/
@@ -172,10 +167,5 @@ void FIO_addAbortHandler(void);
 char const* FIO_zlibVersion(void);
 char const* FIO_lz4Version(void);
 char const* FIO_lzmaVersion(void);
-
-
-#if defined (__cplusplus)
-}
-#endif
 
 #endif  /* FILEIO_H_23981798732 */
