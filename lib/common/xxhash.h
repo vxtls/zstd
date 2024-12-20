@@ -533,6 +533,9 @@
 /*! @brief Version number, encoded as two digits each */
 #define XXH_VERSION_NUMBER  (XXH_VERSION_MAJOR *100*100 + XXH_VERSION_MINOR *100 + XXH_VERSION_RELEASE)
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * @brief Obtains the xxHash version.
  *
@@ -542,6 +545,10 @@
  * @return @ref XXH_VERSION_NUMBER of the invoked library.
  */
 XXH_PUBLIC_API XXH_CONSTF unsigned XXH_versionNumber (void);
+
+#if defined (__cplusplus)
+}
+#endif
 
 /* ****************************
 *  Common basic types
@@ -586,6 +593,10 @@ typedef uint32_t XXH32_hash_t;
 #   else
 #     error "unsupported platform: need a 32-bit type"
 #   endif
+#endif
+
+#if defined (__cplusplus)
+extern "C" {
 #endif
 
 /*!
@@ -816,6 +827,10 @@ XXH_PUBLIC_API XXH_PUREF XXH32_hash_t XXH32_hashFromCanonical(const XXH32_canoni
 #endif
 /*! @endcond */
 
+#if defined (__cplusplus)
+} /* end of extern "C" */
+#endif
+
 /*!
  * @}
  * @ingroup public
@@ -853,6 +868,9 @@ typedef uint64_t XXH64_hash_t;
 #  endif
 #endif
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * @}
  *
@@ -1557,6 +1575,10 @@ XXH_PUBLIC_API XXH_PUREF XXH128_hash_t XXH128_hashFromCanonical(XXH_NOESCAPE con
 
 #endif  /* !XXH_NO_XXH3 */
 
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
+
 #endif  /* XXH_NO_LONG_LONG */
 
 /*!
@@ -1741,6 +1763,11 @@ struct XXH3_state_s {
         tmp_xxh3_state_ptr->seed = 0;                        \
         tmp_xxh3_state_ptr->extSecret = NULL;                \
     } while(0)
+
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /*!
  * @brief Calculates the 128-bit hash of @p data using XXH3.
@@ -1956,6 +1983,10 @@ XXH3_128bits_reset_withSecretandSeed(XXH_NOESCAPE XXH3_state_t* statePtr,
                                      XXH_NOESCAPE const void* secret, size_t secretSize,
                                      XXH64_hash_t seed64);
 #endif /* !XXH_NO_STREAM */
+
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
 
 #endif  /* !XXH_NO_XXH3 */
 #endif  /* XXH_NO_LONG_LONG */
@@ -2277,8 +2308,16 @@ XXH3_128bits_reset_withSecretandSeed(XXH_NOESCAPE XXH3_state_t* statePtr,
  * without access to dynamic allocation.
  */
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
+
 static XXH_CONSTF void* XXH_malloc(size_t s) { (void)s; return NULL; }
 static void XXH_free(void* p) { (void)p; }
+
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
 
 #else
 
@@ -2288,6 +2327,9 @@ static void XXH_free(void* p) { (void)p; }
  */
 #include <stdlib.h>
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * @internal
  * @brief Modify this function to use a different routine than malloc().
@@ -2300,8 +2342,15 @@ static XXH_MALLOCF void* XXH_malloc(size_t s) { return malloc(s); }
  */
 static void XXH_free(void* p) { free(p); }
 
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
+
 #endif  /* XXH_NO_STDLIB */
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * @internal
  * @brief Modify this function to use a different routine than memcpy().
@@ -2310,6 +2359,10 @@ static void* XXH_memcpy(void* dest, const void* src, size_t size)
 {
     return memcpy(dest,src,size);
 }
+
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
 
 /* *************************************
 *  Compiler Specific Options
@@ -2442,6 +2495,10 @@ typedef XXH32_hash_t xxh_u32;
 #  define BYTE xxh_u8
 #  define U8   xxh_u8
 #  define U32  xxh_u32
+#endif
+
+#if defined (__cplusplus)
+extern "C" {
 #endif
 
 /* ***   Memory access   *** */
@@ -3600,6 +3657,10 @@ XXH_PUBLIC_API XXH64_hash_t XXH64_hashFromCanonical(XXH_NOESCAPE const XXH64_can
     return XXH_readBE64(src);
 }
 
+#if defined (__cplusplus)
+}
+#endif
+
 #ifndef XXH_NO_XXH3
 
 /* *********************************************************************
@@ -3920,6 +3981,10 @@ enum XXH_VECTOR_TYPE /* fake enum */ {
 #  pragma GCC optimize("-O2")
 #endif
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
+
 #if XXH_VECTOR == XXH_NEON
 
 /*
@@ -4042,6 +4107,10 @@ XXH_vmlal_high_u32(uint64x2_t acc, uint32x4_t lhs, uint32x4_t rhs)
 # endif
 #endif  /* XXH_VECTOR == XXH_NEON */
 
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
+
 /*
  * VSX and Z Vector helpers.
  *
@@ -4103,6 +4172,9 @@ typedef xxh_u64x2 xxh_aliasing_u64x2 XXH_ALIASING;
 #  if defined(__POWER9_VECTOR__) || (defined(__clang__) && defined(__s390x__))
 #    define XXH_vec_revb vec_revb
 #  else
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * A polyfill for POWER9's vec_revb().
  */
@@ -4112,9 +4184,15 @@ XXH_FORCE_INLINE xxh_u64x2 XXH_vec_revb(xxh_u64x2 val)
                                   0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08 };
     return vec_perm(val, val, vByteSwap);
 }
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
 #  endif
 # endif /* XXH_VSX_BE */
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /*!
  * Performs an unaligned vector load and byte swaps it on big endian.
  */
@@ -4160,6 +4238,10 @@ XXH_FORCE_INLINE xxh_u64x2 XXH_vec_mule(xxh_u32x4 a, xxh_u32x4 b)
 }
 # endif /* XXH_vec_mulo, XXH_vec_mule */
 
+#if defined (__cplusplus)
+} /* extern "C" */
+#endif
+
 #endif /* XXH_VECTOR == XXH_VSX */
 
 #if XXH_VECTOR == XXH_SVE
@@ -4193,6 +4275,9 @@ do { \
 #  endif
 #endif  /* XXH_NO_PREFETCH */
 
+#if defined (__cplusplus)
+extern "C" {
+#endif
 /* ==========================================
  * XXH3 default settings
  * ========================================== */
@@ -6993,6 +7078,11 @@ XXH3_generateSecret_fromSeed(XXH_NOESCAPE void* secretBuffer, XXH64_hash_t seed)
   && defined(__GNUC__) && !defined(__clang__) /* GCC, not Clang */ \
   && defined(__OPTIMIZE__) && XXH_SIZE_OPT <= 0 /* respect -O0 and -Os */
 #  pragma GCC pop_options
+#endif
+
+
+#if defined (__cplusplus)
+} /* extern "C" */
 #endif
 
 #endif  /* XXH_NO_LONG_LONG */
