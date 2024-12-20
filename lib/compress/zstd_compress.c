@@ -7213,8 +7213,8 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
     /* Special case: empty frame */
     if ((nbSequences == 1) && (inSeqs[0].litLength == 0)) {
         U32 const cBlockHeader24 = 1 /* last block */ + (((U32)bt_raw)<<1);
-        RETURN_ERROR_IF(dstCapacity<4, dstSize_tooSmall, "No room for empty frame block header");
-        MEM_writeLE32(op, cBlockHeader24);
+        RETURN_ERROR_IF(dstCapacity<3, dstSize_tooSmall, "No room for empty frame block header");
+        MEM_writeLE24(op, cBlockHeader24);
         op += ZSTD_blockHeaderSize;
         dstCapacity -= ZSTD_blockHeaderSize;
         cSize += ZSTD_blockHeaderSize;
