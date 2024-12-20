@@ -21,10 +21,6 @@
 #define FSE_STATIC_LINKING_ONLY
 #include "fse.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /* ***   Tool functions *** */
 #define HUF_BLOCKSIZE_MAX (128 * 1024)   /**< maximum input size for a single block compressed with HUF_compress */
 size_t HUF_compressBound(size_t size);   /**< maximum compressed size (worst case) */
@@ -276,10 +272,6 @@ size_t HUF_readDTableX1_wksp(HUF_DTable* DTable, const void* src, size_t srcSize
 #endif
 #ifndef HUF_FORCE_DECOMPRESS_X1
 size_t HUF_readDTableX2_wksp(HUF_DTable* DTable, const void* src, size_t srcSize, void* workSpace, size_t wkspSize, int flags);
-#endif
-
-#if defined (__cplusplus)
-}
 #endif
 
 #endif   /* HUF_H_298734234 */

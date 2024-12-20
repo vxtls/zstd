@@ -14,10 +14,6 @@
 #include "zstd_compress_internal.h"   /* ldmParams_t, U32 */
 #include "../zstd.h"   /* ZSTD_CCtx, size_t */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /*-*************************************
 *  Long distance matching
 ***************************************/
@@ -109,9 +105,5 @@ size_t ZSTD_ldm_getMaxNbSeq(ldmParams_t params, size_t maxChunkSize);
  */
 void ZSTD_ldm_adjustParameters(ldmParams_t* params,
                                ZSTD_compressionParameters const* cParams);
-
-#if defined (__cplusplus)
-}
-#endif
 
 #endif /* ZSTD_FAST_H */

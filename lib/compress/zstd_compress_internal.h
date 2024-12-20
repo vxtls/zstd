@@ -26,10 +26,6 @@
 #include "../common/bits.h" /* ZSTD_highbit32, ZSTD_NbCommonBytes */
 #include "zstd_preSplit.h" /* ZSTD_SLIPBLOCK_WORKSPACESIZE */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /*-*************************************
 *  Constants
 ***************************************/
@@ -1425,10 +1421,6 @@ MEM_STATIC int ZSTD_comparePackedTags(size_t packedTag1, size_t packedTag2) {
     U32 const tag2 = packedTag2 & ZSTD_SHORT_CACHE_TAG_MASK;
     return tag1 == tag2;
 }
-
-#if defined (__cplusplus)
-}
-#endif
 
 /* ===============================================================
  * Shared internal declarations

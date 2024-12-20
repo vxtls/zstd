@@ -13,10 +13,6 @@
 
 #include "zstd_compress_internal.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /**
  * Dedicated Dictionary Search Structure bucket log. In the
  * ZSTD_dedicatedDictSearch mode, the hashTable has
@@ -192,11 +188,6 @@ size_t ZSTD_compressBlock_btlazy2_extDict(
 #define ZSTD_COMPRESSBLOCK_BTLAZY2 NULL
 #define ZSTD_COMPRESSBLOCK_BTLAZY2_DICTMATCHSTATE NULL
 #define ZSTD_COMPRESSBLOCK_BTLAZY2_EXTDICT NULL
-#endif
-
-
-#if defined (__cplusplus)
-}
 #endif
 
 #endif /* ZSTD_LAZY_H */

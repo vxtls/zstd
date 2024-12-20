@@ -14,10 +14,6 @@
 #include "../common/mem.h"      /* U32 */
 #include "zstd_compress_internal.h"     /* ZSTD_CCtx, size_t */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #ifndef ZSTD_EXCLUDE_DFAST_BLOCK_COMPRESSOR
 
 void ZSTD_fillDoubleHashTable(ZSTD_matchState_t* ms,
@@ -42,9 +38,5 @@ size_t ZSTD_compressBlock_doubleFast_extDict(
 #define ZSTD_COMPRESSBLOCK_DOUBLEFAST_DICTMATCHSTATE NULL
 #define ZSTD_COMPRESSBLOCK_DOUBLEFAST_EXTDICT NULL
 #endif /* ZSTD_EXCLUDE_DFAST_BLOCK_COMPRESSOR */
-
-#if defined (__cplusplus)
-}
-#endif
 
 #endif /* ZSTD_DOUBLE_FAST_H */

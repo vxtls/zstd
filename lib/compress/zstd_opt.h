@@ -13,10 +13,6 @@
 
 #include "zstd_compress_internal.h"
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #if !defined(ZSTD_EXCLUDE_BTLAZY2_BLOCK_COMPRESSOR) \
  || !defined(ZSTD_EXCLUDE_BTOPT_BLOCK_COMPRESSOR) \
  || !defined(ZSTD_EXCLUDE_BTULTRA_BLOCK_COMPRESSOR)
@@ -71,10 +67,6 @@ size_t ZSTD_compressBlock_btultra2(
 #define ZSTD_COMPRESSBLOCK_BTULTRA_DICTMATCHSTATE NULL
 #define ZSTD_COMPRESSBLOCK_BTULTRA_EXTDICT NULL
 #define ZSTD_COMPRESSBLOCK_BTULTRA2 NULL
-#endif
-
-#if defined (__cplusplus)
-}
 #endif
 
 #endif /* ZSTD_OPT_H */
