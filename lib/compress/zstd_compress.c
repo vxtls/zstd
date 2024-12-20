@@ -3015,7 +3015,7 @@ static size_t
 ZSTD_entropyCompressSeqStore_wExtLitBuffer(
                           void* dst, size_t dstCapacity,
                     const void* literals, size_t litSize,
-                          size_t srcSize,
+                          size_t blockSize,
                     const SeqStore_t* seqStorePtr,
                     const ZSTD_entropyCTables_t* prevEntropy,
                           ZSTD_entropyCTables_t* nextEntropy,
@@ -3032,14 +3032,14 @@ ZSTD_entropyCompressSeqStore_wExtLitBuffer(
     /* When srcSize <= dstCapacity, there is enough space to write a raw uncompressed block.
      * Since we ran out of space, block must be not compressible, so fall back to raw uncompressed block.
      */
-    if ((cSize == ERROR(dstSize_tooSmall)) & (srcSize <= dstCapacity)) {
+    if ((cSize == ERROR(dstSize_tooSmall)) & (blockSize <= dstCapacity)) {
         DEBUGLOG(4, "not enough dstCapacity (%zu) for ZSTD_entropyCompressSeqStore_internal()=> do not compress block", dstCapacity);
         return 0;  /* block not compressed */
     }
     FORWARD_IF_ERROR(cSize, "ZSTD_entropyCompressSeqStore_internal failed");
 
     /* Check compressibility */
-    {   size_t const maxCSize = srcSize - ZSTD_minGain(srcSize, cctxParams->cParams.strategy);
+    {   size_t const maxCSize = blockSize - ZSTD_minGain(blockSize, cctxParams->cParams.strategy);
         if (cSize >= maxCSize) return 0;  /* block not compressed */
     }
     DEBUGLOG(5, "ZSTD_entropyCompressSeqStore() cSize: %zu", cSize);
@@ -6980,13 +6980,11 @@ ZSTD_compressSequences_internal(ZSTD_CCtx* cctx,
         }
 
         RETURN_ERROR_IF(dstCapacity < ZSTD_blockHeaderSize, dstSize_tooSmall, "not enough dstCapacity to write a new compressed block");
-        compressedSeqsSize = ZSTD_entropyCompressSeqStore_wExtLitBuffer(
-                                op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
-                                cctx->seqStore.litStart, (size_t)(cctx->seqStore.lit - cctx->seqStore.litStart),
-                                blockSize,
-                                &cctx->seqStore,
+        compressedSeqsSize = ZSTD_entropyCompressSeqStore(&cctx->seqStore,
                                 &cctx->blockState.prevCBlock->entropy, &cctx->blockState.nextCBlock->entropy,
                                 &cctx->appliedParams,
+                                op + ZSTD_blockHeaderSize /* Leave space for block header */, dstCapacity - ZSTD_blockHeaderSize,
+                                blockSize,
                                 cctx->tmpWorkspace, cctx->tmpWkspSize /* statically allocated in resetCCtx */,
                                 cctx->bmi2);
         FORWARD_IF_ERROR(compressedSeqsSize, "Compressing sequences of block failed");
