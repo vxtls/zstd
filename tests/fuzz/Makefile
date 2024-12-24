@@ -263,9 +263,10 @@ corpora: $(patsubst %,corpora/%,$(FUZZ_TARGETS))
 .PHONY: seedcorpora
 seedcorpora: $(patsubst %,corpora/%_seed_corpus.zip,$(FUZZ_TARGETS))
 
+REGRESSION_TARGET ?= all
 regressiontest: corpora
-	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" $(PYTHON) ./fuzz.py build all --debug=$(DEBUGLEVEL)
-	$(PYTHON) ./fuzz.py regression all
+	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" $(PYTHON) ./fuzz.py build $(REGRESSION_TARGET) --debug=$(DEBUGLEVEL)
+	$(PYTHON) ./fuzz.py regression $(REGRESSION_TARGET)
 
 clean:
 	@$(RM) *.a *.o $(FUZZ_TARGETS)

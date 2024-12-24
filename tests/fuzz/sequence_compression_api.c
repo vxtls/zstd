@@ -239,8 +239,8 @@ transferLiterals(void* dst, size_t dstCapacity, const ZSTD_Sequence* seqs, size_
     for (n=0; n<nbSeqs; n++) {
         size_t litLen = seqs[n].litLength;
         size_t mlen = seqs[n].matchLength;
-        assert(op + litLen < oend);
-        assert(ip + litLen + mlen <= iend);
+        assert(op + litLen < oend); (void)oend;
+        assert(ip + litLen + mlen <= iend); (void)iend;
         memcpy(op, ip, litLen);
         op += litLen;
         ip += litLen + mlen;
@@ -253,8 +253,7 @@ static size_t roundTripTest_compressSequencesAndLiterals(
                     void* result, size_t resultCapacity,
                     void* compressed, size_t compressedCapacity,
                     const void* src, size_t srcSize,
-                    const ZSTD_Sequence* seqs, size_t nbSeqs,
-                    ZSTD_SequenceFormat_e mode)
+                    const ZSTD_Sequence* seqs, size_t nbSeqs)
 {
     size_t const litCapacity = srcSize + 8;
     void* literals = malloc(litCapacity);
@@ -267,21 +266,21 @@ static size_t roundTripTest_compressSequencesAndLiterals(
                                 compressed, compressedCapacity,
                                    seqs, nbSeqs,
                                    literals, litSize, litCapacity, srcSize);
-    if ( (ZSTD_getErrorCode(cSize) == ZSTD_error_dstSize_tooSmall)
-      && (mode == ZSTD_sf_explicitBlockDelimiters) ) {
+    free(literals);
+    if (ZSTD_getErrorCode(cSize) == ZSTD_error_cannotProduce_uncompressedBlock) {
+        /* Valid scenario : ZSTD_compressSequencesAndLiterals cannot generate uncompressed blocks */
+        return 0;
+    }
+    if (ZSTD_getErrorCode(cSize) == ZSTD_error_dstSize_tooSmall) {
         /* Valid scenario : in explicit delimiter mode,
          * it might be possible for the compressed size to outgrow dstCapacity.
          * In which case, it's still a valid fuzzer scenario,
          * but no roundtrip shall be possible */
         return 0;
     }
+
     /* round-trip */
-    if (ZSTD_isError(cSize)) {
-         ZSTD_ErrorCode err = ZSTD_getErrorCode(cSize);
-         /* this specific error might happen as a result of data being uncompressible */
-         if (err != ZSTD_error_cannotProduce_uncompressedBlock)
-            FUZZ_ZASSERT(cSize);
-    }
+    FUZZ_ZASSERT(cSize);
     {   size_t const dSize = ZSTD_decompressDCtx(dctx, result, resultCapacity, compressed, cSize);
         FUZZ_ZASSERT(dSize);
         FUZZ_ASSERT_MSG(dSize == srcSize, "Incorrect regenerated size");
@@ -305,11 +304,12 @@ static size_t roundTripTest(void* result, size_t resultCapacity,
         FUZZ_ZASSERT(ZSTD_DCtx_refDDict(dctx, ddict));
     }
 
-    {   int blockMode;
-        /* compressSequencesAndLiterals() only supports explicitBlockDelimiters */
+    {   int blockMode, validation;
+        /* compressSequencesAndLiterals() only supports explicitBlockDelimiters and no validation */
         FUZZ_ZASSERT(ZSTD_CCtx_getParameter(cctx, ZSTD_c_blockDelimiters, &blockMode));
-        if (blockMode == ZSTD_sf_explicitBlockDelimiters) {
-            FUZZ_ZASSERT(roundTripTest_compressSequencesAndLiterals(result, resultCapacity, compressed, compressedCapacity, src, srcSize, seqs, nbSeqs, mode));
+        FUZZ_ZASSERT(ZSTD_CCtx_getParameter(cctx, ZSTD_c_validateSequences, &validation));
+        if ((blockMode == ZSTD_sf_explicitBlockDelimiters) && (!validation)) {
+            FUZZ_ZASSERT(roundTripTest_compressSequencesAndLiterals(result, resultCapacity, compressed, compressedCapacity, src, srcSize, seqs, nbSeqs));
         }
     }
 
