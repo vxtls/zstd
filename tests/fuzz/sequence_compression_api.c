@@ -16,6 +16,7 @@
  */
 
 #define ZSTD_STATIC_LINKING_ONLY
+#include "zstd_errors.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -275,7 +276,12 @@ static size_t roundTripTest_compressSequencesAndLiterals(
         return 0;
     }
     /* round-trip */
-    FUZZ_ZASSERT(cSize);
+    if (ZSTD_isError(cSize)) {
+         ZSTD_ErrorCode err = ZSTD_getErrorCode(cSize);
+         /* this specific error might happen as a result of data being uncompressible */
+         if (err != ZSTD_error_cannotProduce_uncompressedBlock)
+            FUZZ_ZASSERT(cSize);
+    }
     {   size_t const dSize = ZSTD_decompressDCtx(dctx, result, resultCapacity, compressed, cSize);
         FUZZ_ZASSERT(dSize);
         FUZZ_ASSERT_MSG(dSize == srcSize, "Incorrect regenerated size");
