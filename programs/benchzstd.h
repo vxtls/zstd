@@ -109,7 +109,7 @@ typedef struct {
     int ldmHashLog;
     int ldmBucketSizeLog;
     int ldmHashRateLog;
-    ZSTD_paramSwitch_e literalCompressionMode;
+    ZSTD_ParamSwitch_e literalCompressionMode;
     int useRowMatchFinder;  /* use row-based matchfinder if possible */
 } BMK_advancedParams_t;
 

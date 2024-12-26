@@ -1328,7 +1328,7 @@ typedef struct {
                                *
                                * Note: This field is optional. ZSTD_generateSequences() will calculate the value of
                                * 'rep', but repeat offsets do not necessarily need to be calculated from an external
-                               * sequence provider's perspective. For example, ZSTD_compressSequences() does not
+                               * sequence provider perspective. For example, ZSTD_compressSequences() does not
                                * use this 'rep' field at all (as of now).
                                */
 } ZSTD_Sequence;
@@ -1433,14 +1433,15 @@ typedef enum {
 } ZSTD_literalCompressionMode_e;
 
 typedef enum {
-  /* Note: This enum controls features which are conditionally beneficial. Zstd typically will make a final
-   * decision on whether or not to enable the feature (ZSTD_ps_auto), but setting the switch to ZSTD_ps_enable
-   * or ZSTD_ps_disable allow for a force enable/disable the feature.
+  /* Note: This enum controls features which are conditionally beneficial.
+   * Zstd can take a decision on whether or not to enable the feature (ZSTD_ps_auto),
+   * but setting the switch to ZSTD_ps_enable or ZSTD_ps_disable force enable/disable the feature.
    */
   ZSTD_ps_auto = 0,         /* Let the library automatically determine whether the feature shall be enabled */
   ZSTD_ps_enable = 1,       /* Force-enable the feature */
   ZSTD_ps_disable = 2       /* Do not use the feature */
-} ZSTD_paramSwitch_e;
+} ZSTD_ParamSwitch_e;
+#define ZSTD_paramSwitch_e ZSTD_ParamSwitch_e  /* old name */
 
 /***************************************
 *  Frame header and size functions
@@ -1560,9 +1561,10 @@ ZSTDLIB_STATIC_API size_t ZSTD_decompressionMargin(const void* src, size_t srcSi
     ))
 
 typedef enum {
-  ZSTD_sf_noBlockDelimiters = 0,         /* Representation of ZSTD_Sequence has no block delimiters, sequences only */
-  ZSTD_sf_explicitBlockDelimiters = 1    /* Representation of ZSTD_Sequence contains explicit block delimiters */
-} ZSTD_sequenceFormat_e;
+  ZSTD_sf_noBlockDelimiters = 0,         /* ZSTD_Sequence[] has no block delimiters, just sequences */
+  ZSTD_sf_explicitBlockDelimiters = 1    /* ZSTD_Sequence[] contains explicit block delimiters */
+} ZSTD_SequenceFormat_e;
+#define ZSTD_sequenceFormat_e ZSTD_SequenceFormat_e /* old name */
 
 /*! ZSTD_sequenceBound() :
  * `srcSize` : size of the input buffer
@@ -1586,7 +1588,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_sequenceBound(size_t srcSize);
  * @param zc The compression context to be used for ZSTD_compress2(). Set any
  *           compression parameters you need on this context.
  * @param outSeqs The output sequences buffer of size @p outSeqsSize
- * @param outSeqsSize The size of the output sequences buffer.
+ * @param outSeqsCapacity The size of the output sequences buffer.
  *                    ZSTD_sequenceBound(srcSize) is an upper bound on the number
  *                    of sequences that can be generated.
  * @param src The source buffer to generate sequences from of size @p srcSize.
@@ -1604,7 +1606,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_sequenceBound(size_t srcSize);
 ZSTD_DEPRECATED("For debugging only, will be replaced by ZSTD_extractSequences()")
 ZSTDLIB_STATIC_API size_t
 ZSTD_generateSequences(ZSTD_CCtx* zc,
-                       ZSTD_Sequence* outSeqs, size_t outSeqsSize,
+                       ZSTD_Sequence* outSeqs, size_t outSeqsCapacity,
                        const void* src, size_t srcSize);
 
 /*! ZSTD_mergeBlockDelimiters() :
@@ -1624,7 +1626,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  * Compress an array of ZSTD_Sequence, associated with @src buffer, into dst.
  * @src contains the entire input (not just the literals).
  * If @srcSize > sum(sequence.length), the remaining bytes are considered all literals
- * If a dictionary is included, then the cctx should reference the dict. (see: ZSTD_CCtx_refCDict(), ZSTD_CCtx_loadDictionary(), etc.)
+ * If a dictionary is included, then the cctx should reference the dict (see: ZSTD_CCtx_refCDict(), ZSTD_CCtx_loadDictionary(), etc.).
  * The entire source is compressed into a single frame.
  *
  * The compression behavior changes based on cctx params. In particular:
@@ -1633,11 +1635,17 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  *    the block size derived from the cctx, and sequences may be split. This is the default setting.
  *
  *    If ZSTD_c_blockDelimiters == ZSTD_sf_explicitBlockDelimiters, the array of ZSTD_Sequence is expected to contain
- *    block delimiters (defined in ZSTD_Sequence). Behavior is undefined if no block delimiters are provided.
+ *    valid block delimiters (defined in ZSTD_Sequence). Behavior is undefined if no block delimiters are provided.
  *
- *    If ZSTD_c_validateSequences == 0, this function will blindly accept the sequences provided. Invalid sequences cause undefined
- *    behavior. If ZSTD_c_validateSequences == 1, then if sequence is invalid (see doc/zstd_compression_format.md for
- *    specifics regarding offset/matchlength requirements) then the function will bail out and return an error.
+ *    When ZSTD_c_blockDelimiters == ZSTD_sf_explicitBlockDelimiters, it's possible to decide generating repcodes
+ *    using the advanced parameter ZSTD_c_repcodeResolution. Repcodes will improve compression ratio, though the benefit
+ *    can vary greatly depending on Sequences. On the other hand, repcode resolution is an expensive operation.
+ *    By default, it's disabled at low (<10) compression levels, and enabled above the threshold (>=10).
+ *    ZSTD_c_repcodeResolution makes it possible to directly manage this processing in either direction.
+ *
+ *    If ZSTD_c_validateSequences == 0, this function blindly accepts the Sequences provided. Invalid Sequences cause undefined
+ *    behavior. If ZSTD_c_validateSequences == 1, then the function will detect invalid Sequences (see doc/zstd_compression_format.md for
+ *    specifics regarding offset/matchlength requirements) and then bail out and return an error.
  *
  *    In addition to the two adjustable experimental params, there are other important cctx params.
  *    - ZSTD_c_minMatch MUST be set as less than or equal to the smallest match generated by the match finder. It has a minimum value of ZSTD_MINMATCH_MIN.
@@ -1645,15 +1653,41 @@ ZSTDLIB_STATIC_API size_t ZSTD_mergeBlockDelimiters(ZSTD_Sequence* sequences, si
  *    - ZSTD_c_windowLog affects offset validation: this function will return an error at higher debug levels if a provided offset
  *      is larger than what the spec allows for a given window log and dictionary (if present). See: doc/zstd_compression_format.md
  *
- * Note: Repcodes are, as of now, always re-calculated within this function, so ZSTD_Sequence::rep is unused.
- * Note 2: Once we integrate ability to ingest repcodes, the explicit block delims mode must respect those repcodes exactly,
- *         and cannot emit an RLE block that disagrees with the repcode history
+ * Note: Repcodes are, as of now, always re-calculated within this function, ZSTD_Sequence.rep is effectively unused.
+ * Dev Note: Once ability to ingest repcodes become available, the explicit block delims mode must respect those repcodes exactly,
+ *         and cannot emit an RLE block that disagrees with the repcode history.
  * @return : final compressed size, or a ZSTD error code.
  */
 ZSTDLIB_STATIC_API size_t
-ZSTD_compressSequences( ZSTD_CCtx* cctx, void* dst, size_t dstSize,
-                        const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
-                        const void* src, size_t srcSize);
+ZSTD_compressSequences(ZSTD_CCtx* cctx,
+                       void* dst, size_t dstCapacity,
+                 const ZSTD_Sequence* inSeqs, size_t inSeqsSize,
+                 const void* src, size_t srcSize);
+
+
+/*! ZSTD_compressSequencesAndLiterals() :
+ * This is a variant of ZSTD_compressSequences() which,
+ * instead of receiving (src,srcSize) as input parameter, receives (literals,litSize),
+ * aka all the literals, already extracted and laid out into a single continuous buffer.
+ * This can be useful if the process generating the sequences also happens to generate the buffer of literals,
+ * thus skipping an extraction + caching stage.
+ * It's a speed optimization, useful when the right conditions are met,
+ * but it also features the following limitations:
+ * - Only supports explicit delimiter mode
+ * - Currently does not support Sequences validation (so input Sequences are trusted)
+ * - Not compatible with frame checksum, which must be disabled
+ * - If any block is incompressible, will fail and return an error
+ * - @litSize must be == sum of all @.litLength fields in @inSeqs. Any discrepancy will generate an error.
+ * - the buffer @literals must have a size @litCapacity which is larger than @litSize by at least 8 bytes.
+ * - @decompressedSize must be correct, and correspond to the sum of all Sequences. Any discrepancy will generate an error.
+ * @return : final compressed size, or a ZSTD error code.
+ */
+ZSTDLIB_STATIC_API size_t
+ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
+                                  void* dst, size_t dstCapacity,
+                            const ZSTD_Sequence* inSeqs, size_t nbSequences,
+                            const void* literals, size_t litSize, size_t litCapacity,
+                            size_t decompressedSize);
 
 
 /*! ZSTD_writeSkippableFrame() :
@@ -2005,7 +2039,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * See the comments on that enum for an explanation of the feature. */
 #define ZSTD_c_forceAttachDict ZSTD_c_experimentalParam4
 
-/* Controlled with ZSTD_paramSwitch_e enum.
+/* Controlled with ZSTD_ParamSwitch_e enum.
  * Default is ZSTD_ps_auto.
  * Set to ZSTD_ps_disable to never compress literals.
  * Set to ZSTD_ps_enable to always compress literals. (Note: uncompressed literals
@@ -2146,17 +2180,17 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 /* ZSTD_c_validateSequences
  * Default is 0 == disabled. Set to 1 to enable sequence validation.
  *
- * For use with sequence compression API: ZSTD_compressSequences().
- * Designates whether or not we validate sequences provided to ZSTD_compressSequences()
+ * For use with sequence compression API: ZSTD_compressSequences*().
+ * Designates whether or not provided sequences are validated within ZSTD_compressSequences*()
  * during function execution.
  *
- * Without validation, providing a sequence that does not conform to the zstd spec will cause
- * undefined behavior, and may produce a corrupted block.
+ * When Sequence validation is disabled (default), Sequences are compressed as-is,
+ * so they must correct, otherwise it would result in a corruption error.
  *
- * With validation enabled, if sequence is invalid (see doc/zstd_compression_format.md for
+ * Sequence validation adds some protection, by ensuring that all values respect boundary conditions.
+ * If a Sequence is detected invalid (see doc/zstd_compression_format.md for
  * specifics regarding offset/matchlength requirements) then the function will bail out and
  * return an error.
- *
  */
 #define ZSTD_c_validateSequences ZSTD_c_experimentalParam12
 
@@ -2196,7 +2230,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 #define ZSTD_c_splitAfterSequences ZSTD_c_experimentalParam13
 
 /* ZSTD_c_useRowMatchFinder
- * Controlled with ZSTD_paramSwitch_e enum.
+ * Controlled with ZSTD_ParamSwitch_e enum.
  * Default is ZSTD_ps_auto.
  * Set to ZSTD_ps_disable to never use row-based matchfinder.
  * Set to ZSTD_ps_enable to force usage of row-based matchfinder.
@@ -2228,7 +2262,7 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
 #define ZSTD_c_deterministicRefPrefix ZSTD_c_experimentalParam15
 
 /* ZSTD_c_prefetchCDictTables
- * Controlled with ZSTD_paramSwitch_e enum. Default is ZSTD_ps_auto.
+ * Controlled with ZSTD_ParamSwitch_e enum. Default is ZSTD_ps_auto.
  *
  * In some situations, zstd uses CDict tables in-place rather than copying them
  * into the working context. (See docs on ZSTD_dictAttachPref_e above for details).
@@ -2275,15 +2309,18 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  */
 #define ZSTD_c_maxBlockSize ZSTD_c_experimentalParam18
 
-/* ZSTD_c_searchForExternalRepcodes
- * This parameter affects how zstd parses external sequences, such as sequences
- * provided through the compressSequences() API or from an external block-level
- * sequence producer.
+/* ZSTD_c_repcodeResolution
+ * This parameter only has an effect if ZSTD_c_blockDelimiters is
+ * set to ZSTD_sf_explicitBlockDelimiters (may change in the future).
  *
- * If set to ZSTD_ps_enable, the library will check for repeated offsets in
+ * This parameter affects how zstd parses external sequences,
+ * provided via the ZSTD_compressSequences*() API
+ * or from an external block-level sequence producer.
+ *
+ * If set to ZSTD_ps_enable, the library will check for repeated offsets within
  * external sequences, even if those repcodes are not explicitly indicated in
  * the "rep" field. Note that this is the only way to exploit repcode matches
- * while using compressSequences() or an external sequence producer, since zstd
+ * while using compressSequences*() or an external sequence producer, since zstd
  * currently ignores the "rep" field of external sequences.
  *
  * If set to ZSTD_ps_disable, the library will not exploit repeated offsets in
@@ -2292,12 +2329,10 @@ ZSTDLIB_STATIC_API size_t ZSTD_CCtx_refPrefix_advanced(ZSTD_CCtx* cctx, const vo
  * compression ratio.
  *
  * The default value is ZSTD_ps_auto, for which the library will enable/disable
- * based on compression level.
- *
- * Note: for now, this param only has an effect if ZSTD_c_blockDelimiters is
- * set to ZSTD_sf_explicitBlockDelimiters. That may change in the future.
+ * based on compression level (currently: level<10 disables, level>=10 enables).
  */
-#define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19
+#define ZSTD_c_repcodeResolution ZSTD_c_experimentalParam19
+#define ZSTD_c_searchForExternalRepcodes ZSTD_c_experimentalParam19 /* older name */
 
 
 /*! ZSTD_CCtx_getParameter() :

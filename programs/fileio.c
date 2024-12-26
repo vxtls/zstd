@@ -423,7 +423,7 @@ void FIO_setTestMode(FIO_prefs_t* const prefs, int testMode) {
 
 void FIO_setLiteralCompressionMode(
         FIO_prefs_t* const prefs,
-        ZSTD_paramSwitch_e mode) {
+        ZSTD_ParamSwitch_e mode) {
     prefs->literalCompressionMode = mode;
 }
 
@@ -485,7 +485,7 @@ void FIO_setPassThroughFlag(FIO_prefs_t* const prefs, int value) {
     prefs->passThrough = (value != 0);
 }
 
-void FIO_setMMapDict(FIO_prefs_t* const prefs, ZSTD_paramSwitch_e value)
+void FIO_setMMapDict(FIO_prefs_t* const prefs, ZSTD_ParamSwitch_e value)
 {
     prefs->mmapDict = value;
 }
