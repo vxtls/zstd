@@ -4111,15 +4111,28 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
 
     /* frame operations on skippable frames */
-    {   const char skippableFrame[] = "\x50\x2a\x4d\x18\x05\x0\x0\0abcde";
-        size_t const skippableFrameSize = sizeof(skippableFrame) - 1 /* remove final /0 */;
+    {   const char skippableFrame[] = "\x52\x2a\x4d\x18\x05\x0\x0\0abcde";
+        size_t const skippableFrameSize = sizeof(skippableFrame) - 1 /* remove the terminating /0 */;
 
         DISPLAYLEVEL(3, "test%3i : ZSTD_findFrameCompressedSize on skippable frame : ", testNb++);
-        if (ZSTD_findFrameCompressedSize(skippableFrame, skippableFrameSize) != skippableFrameSize) goto _output_error;
+        CHECK(ZSTD_findFrameCompressedSize(skippableFrame, skippableFrameSize) == skippableFrameSize);
         DISPLAYLEVEL(3, "OK \n");
 
         DISPLAYLEVEL(3, "test%3i : ZSTD_getFrameContentSize on skippable frame : ", testNb++);
-        if (ZSTD_getFrameContentSize(skippableFrame, skippableFrameSize) != 0) goto _output_error;
+        CHECK(ZSTD_getFrameContentSize(skippableFrame, skippableFrameSize) == 0);
+        DISPLAYLEVEL(3, "OK \n");
+
+        DISPLAYLEVEL(3, "test%3i : ZSTD_getFrameHeader on skippable frame : ", testNb++);
+        {   ZSTD_frameHeader zfh;
+            size_t const s = ZSTD_getFrameHeader(&zfh, skippableFrame, skippableFrameSize);
+            CHECK_Z(s);
+            CHECK(s == 0); /* success */
+            CHECK(zfh.frameType == ZSTD_skippableFrame);
+            CHECK(zfh.headerSize == ZSTD_SKIPPABLEHEADERSIZE);
+            CHECK(zfh.dictID == 2); /* magic variant */
+            assert(skippableFrameSize >= ZSTD_SKIPPABLEHEADERSIZE);
+            CHECK(zfh.frameContentSize == skippableFrameSize - ZSTD_SKIPPABLEHEADERSIZE);
+        }
         DISPLAYLEVEL(3, "OK \n");
     }
 

@@ -484,8 +484,10 @@ size_t ZSTD_getFrameHeader_advanced(ZSTD_frameHeader* zfhPtr, const void* src, s
             if (srcSize < ZSTD_SKIPPABLEHEADERSIZE)
                 return ZSTD_SKIPPABLEHEADERSIZE; /* magic number + frame length */
             ZSTD_memset(zfhPtr, 0, sizeof(*zfhPtr));
-            zfhPtr->frameContentSize = MEM_readLE32((const char *)src + ZSTD_FRAMEIDSIZE);
             zfhPtr->frameType = ZSTD_skippableFrame;
+            zfhPtr->dictID = MEM_readLE32(src) - ZSTD_MAGIC_SKIPPABLE_START;
+            zfhPtr->headerSize = ZSTD_SKIPPABLEHEADERSIZE;
+            zfhPtr->frameContentSize = MEM_readLE32((const char *)src + ZSTD_FRAMEIDSIZE);
             return 0;
         }
         RETURN_ERROR(prefix_unknown, "");
@@ -917,7 +919,7 @@ static size_t ZSTD_setRleBlock(void* dst, size_t dstCapacity,
     return regenSize;
 }
 
-static void ZSTD_DCtx_trace_end(ZSTD_DCtx const* dctx, U64 uncompressedSize, U64 compressedSize, unsigned streaming)
+static void ZSTD_DCtx_trace_end(ZSTD_DCtx const* dctx, U64 uncompressedSize, U64 compressedSize, int streaming)
 {
 #if ZSTD_TRACE
     if (dctx->traceCtx && ZSTD_trace_decompress_end != NULL) {

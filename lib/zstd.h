@@ -1491,7 +1491,7 @@ ZSTDLIB_STATIC_API unsigned long long ZSTD_findDecompressedSize(const void* src,
 ZSTDLIB_STATIC_API unsigned long long ZSTD_decompressBound(const void* src, size_t srcSize);
 
 /*! ZSTD_frameHeaderSize() :
- *  srcSize must be >= ZSTD_FRAMEHEADERSIZE_PREFIX.
+ *  srcSize must be large enough, aka >= ZSTD_FRAMEHEADERSIZE_PREFIX.
  * @return : size of the Frame Header,
  *           or an error code (if srcSize is too small) */
 ZSTDLIB_STATIC_API size_t ZSTD_frameHeaderSize(const void* src, size_t srcSize);
@@ -1503,18 +1503,18 @@ typedef struct {
     unsigned blockSizeMax;
     ZSTD_frameType_e frameType;          /* if == ZSTD_skippableFrame, frameContentSize is the size of skippable content */
     unsigned headerSize;
-    unsigned dictID;
+    unsigned dictID;                     /* for ZSTD_skippableFrame, contains the skippable magic variant [0-15] */
     unsigned checksumFlag;
     unsigned _reserved1;
     unsigned _reserved2;
 } ZSTD_frameHeader;
 
 /*! ZSTD_getFrameHeader() :
- *  decode Frame Header, or requires larger `srcSize`.
- * @return : 0, `zfhPtr` is correctly filled,
- *          >0, `srcSize` is too small, @return value is the wanted `srcSize` amount,
+ *  decode Frame Header into `zfhPtr`, or requires larger `srcSize`.
+ * @return : 0 => header is complete, `zfhPtr` is correctly filled,
+ *          >0 => `srcSize` is too small, @return value is the wanted `srcSize` amount, `zfhPtr` is not filled,
  *           or an error code, which can be tested using ZSTD_isError() */
-ZSTDLIB_STATIC_API size_t ZSTD_getFrameHeader(ZSTD_frameHeader* zfhPtr, const void* src, size_t srcSize);   /**< doesn't consume input */
+ZSTDLIB_STATIC_API size_t ZSTD_getFrameHeader(ZSTD_frameHeader* zfhPtr, const void* src, size_t srcSize);
 /*! ZSTD_getFrameHeader_advanced() :
  *  same as ZSTD_getFrameHeader(),
  *  with added capability to select a format (like ZSTD_f_zstd1_magicless) */

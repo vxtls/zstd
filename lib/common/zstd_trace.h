@@ -74,7 +74,7 @@ typedef struct {
      * Is the dictionary cold?
      * Only set on decompression.
      */
-    unsigned dictionaryIsCold;
+    int dictionaryIsCold;
     /**
      * The dictionary size or zero if no dictionary.
      */
