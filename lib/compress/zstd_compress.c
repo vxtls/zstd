@@ -15,7 +15,9 @@
 #include "../common/zstd_deps.h"  /* INT_MAX, ZSTD_memset, ZSTD_memcpy */
 #include "../common/mem.h"
 #include "../common/error_private.h"
+#include "compiler.h"
 #include "hist.h"           /* HIST_countFast_wksp */
+#include "zstd_internal.h"
 #define FSE_STATIC_LINKING_ONLY   /* FSE_encodeSymbol */
 #include "../common/fse.h"
 #include "../common/huf.h"
@@ -7103,15 +7105,226 @@ size_t ZSTD_compressSequences(ZSTD_CCtx* cctx,
     return cSize;
 }
 
+
+#if defined(__AVX2__)
+
+#include <immintrin.h>  /* AVX2 intrinsics */
+
 /*
+ * Convert 2 sequences per iteration, using AVX2 intrinsics:
+ *   - offset -> offBase = offset + 2
+ *   - litLength -> (U16) litLength
+ *   - matchLength -> (U16)(matchLength - 3)
+ *   - rep is ignored
+ * Store only 8 bytes per SeqDef (offBase[4], litLength[2], mlBase[2]).
+ *
+ * At the end, instead of extracting two __m128i,
+ * we use _mm256_permute4x64_epi64(..., 0xE8) to move lane2 into lane1,
+ * then store the lower 16 bytes in one go.
+ */
+void convertSequences_noRepcodes(
+    SeqDef* dstSeqs,
+    const ZSTD_Sequence* inSeqs,
+    size_t nbSequences)
+{
+    /*
+     * addition:
+     *   For each 128-bit half: (offset+2, litLength+0, matchLength-3, rep+0)
+     */
+    const __m256i addition = _mm256_setr_epi32(
+        ZSTD_REP_NUM, 0, -MINMATCH, 0,    /* for sequence i */
+        ZSTD_REP_NUM, 0, -MINMATCH, 0     /* for sequence i+1 */
+    );
+
+    /*
+     * shuffle mask for byte-level rearrangement in each 128-bit half:
+     *
+     * Input layout (after addition) per 128-bit half:
+     *   [ offset+2 (4 bytes) | litLength (4 bytes) | matchLength (4 bytes) | rep (4 bytes) ]
+     * We only need:
+     *   offBase (4 bytes) = offset+2
+     *   litLength (2 bytes) = low 2 bytes of litLength
+     *   mlBase (2 bytes) = low 2 bytes of (matchLength)
+     * => Bytes [0..3, 4..5, 8..9], zero the rest.
+     */
+    const __m256i mask = _mm256_setr_epi8(
+        /* For the lower 128 bits => sequence i */
+         0, 1, 2, 3,       /* offset+2 */
+         4, 5,             /* litLength (16 bits) */
+         8, 9,             /* matchLength (16 bits) */
+         (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+         (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+
+        /* For the upper 128 bits => sequence i+1 */
+        16,17,18,19,       /* offset+2 */
+        20,21,             /* litLength */
+        24,25,             /* matchLength */
+        (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+        (char)0x80, (char)0x80, (char)0x80, (char)0x80
+    );
+
+    /*
+     * Next, we'll use _mm256_permute4x64_epi64(vshf, 0xE8).
+     * Explanation of 0xE8 = 11101000b => [lane0, lane2, lane2, lane3].
+     * So the lower 128 bits become [lane0, lane2] => combining seq0 and seq1.
+     */
+#define PERM_LANE_0X_E8 0xE8  /* [0,2,2,3] in lane indices */
+
+    size_t i = 0;
+    /* Process 2 sequences per loop iteration */
+    for (; i + 1 < nbSequences; i += 2) {
+        /* 1) Load 2 ZSTD_Sequence (32 bytes) */
+        __m256i vin  = _mm256_loadu_si256((__m256i const*)&inSeqs[i]);
+
+        /* 2) Add {2, 0, -3, 0} in each 128-bit half */
+        __m256i vadd = _mm256_add_epi32(vin, addition);
+
+        /* 3) Shuffle bytes so each half gives us the 8 bytes we need */
+        __m256i vshf = _mm256_shuffle_epi8(vadd, mask);
+        /*
+         * Now:
+         *   Lane0 = seq0's 8 bytes
+         *   Lane1 = 0
+         *   Lane2 = seq1's 8 bytes
+         *   Lane3 = 0
+         */
+
+        /* 4) Permute 64-bit lanes => move Lane2 down into Lane1. */
+        __m256i vperm = _mm256_permute4x64_epi64(vshf, PERM_LANE_0X_E8);
+        /*
+         * Now the lower 16 bytes (Lane0+Lane1) = [seq0, seq1].
+         * The upper 16 bytes are [Lane2, Lane3] = [seq1, 0], but we won't use them.
+         */
+
+        /* 5) Store only the lower 16 bytes => 2 SeqDef (8 bytes each) */
+        _mm_storeu_si128((__m128i *)&dstSeqs[i], _mm256_castsi256_si128(vperm));
+        /*
+         * This writes out 16 bytes total:
+         *   - offset 0..7  => seq0 (offBase, litLength, mlBase)
+         *   - offset 8..15 => seq1 (offBase, litLength, mlBase)
+         */
+    }
+
+    /* Handle leftover if nbSequences is odd */
+    if (i < nbSequences) {
+        /* Fallback: process last sequence */
+        assert(i == nbSequences - 1);
+        dstSeqs[i].offBase = OFFSET_TO_OFFBASE(inSeqs[i].offset);
+        /* note: doesn't work if one length is > 65535 */
+        dstSeqs[i].litLength = (U16)inSeqs[i].litLength;
+        dstSeqs[i].mlBase = (U16)(inSeqs[i].matchLength - MINMATCH);
+    }
+}
+
+#elif defined(__SSSE3__)
+
+#include <tmmintrin.h>  /* SSSE3 intrinsics: _mm_shuffle_epi8 */
+#include <emmintrin.h>  /* SSE2 intrinsics:  _mm_add_epi32, etc. */
+
+/*
+ * Convert sequences with SSE.
+ * - offset   -> offBase = offset + 2
+ * - litLength (32-bit) -> (U16) litLength
+ * - matchLength (32-bit) -> (U16)(matchLength - 3)
+ * - rep is discarded.
+ *
+ * We shuffle so that only the first 8 bytes in the final 128-bit
+ * register are used. We still store 16 bytes (low 8 are good, high 8 are "don't care").
+ */
+static void convertSequences_noRepcodes(SeqDef* dstSeqs,
+                                const ZSTD_Sequence* inSeqs,
+                                size_t nbSequences)
+{
+    /*
+       addition = { offset+2, litLength+0, matchLength-3, rep+0 }
+       setr means the first argument is placed in the lowest 32 bits,
+       second in next-lower 32 bits, etc.
+    */
+    const __m128i addition = _mm_setr_epi32(2, 0, -3, 0);
+
+    /*
+       Shuffle mask: we reorder bytes after the addition.
+
+       Input layout in 128-bit register (after addition):
+         Bytes:   [ 0..3 | 4..7 | 8..11 | 12..15 ]
+         Fields:   offset+2   litLength  matchLength   rep
+
+       We want in output:
+         Bytes:   [ 0..3 | 4..5 | 6..7 | 8..15 ignore ]
+         Fields:   offset+2   (U16)litLength (U16)(matchLength)
+
+       _mm_shuffle_epi8 picks bytes from the source. A byte of 0x80 means “zero out”.
+       So we want:
+         out[0] = in[0], out[1] = in[1], out[2] = in[2], out[3] = in[3],     // offset+2 (4 bytes)
+         out[4] = in[4], out[5] = in[5],                                   // (U16) litLength
+         out[6] = in[8], out[7] = in[9],                                   // (U16) matchLength
+         out[8..15] = 0x80 => won't matter if we only care about first 8 bytes
+     */
+    const __m128i mask = _mm_setr_epi8(
+        0, 1, 2, 3,       /* offset (4 bytes)       */
+        4, 5,             /* litLength (2 bytes)    */
+        8, 9,             /* matchLength (2 bytes)  */
+        (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+        (char)0x80, (char)0x80, (char)0x80, (char)0x80
+    );
+    size_t i;
+
+    for (i = 0; i + 1 < nbSequences; i += 2) {
+        /*-------------------------*/
+        /* Process inSeqs[i]      */
+        /*-------------------------*/
+        __m128i vin0  = _mm_loadu_si128((const __m128i  *)(const void*)&inSeqs[i]);
+        __m128i vadd0 = _mm_add_epi32(vin0, addition);
+        __m128i vshf0 = _mm_shuffle_epi8(vadd0, mask);
+        _mm_storel_epi64((__m128i *)(void*)&dstSeqs[i], vshf0);
+
+        /*-------------------------*/
+        /* Process inSeqs[i + 1]  */
+        /*-------------------------*/
+        __m128i vin1  = _mm_loadu_si128((__m128i const *)(const void*)&inSeqs[i + 1]);
+        __m128i vadd1 = _mm_add_epi32(vin1, addition);
+        __m128i vshf1 = _mm_shuffle_epi8(vadd1, mask);
+        _mm_storel_epi64((__m128i *)(void*)&dstSeqs[i + 1], vshf1);
+    }
+
+    /* Handle leftover if nbSequences is odd */
+    if (i < nbSequences) {
+        /* Fallback: process last sequence */
+        assert(i == nbSequences - 1);
+        dstSeqs[i].offBase = OFFSET_TO_OFFBASE(inSeqs[i].offset);
+        /* note: doesn't work if one length is > 65535 */
+        dstSeqs[i].litLength = (U16)inSeqs[i].litLength;
+        dstSeqs[i].mlBase = (U16)(inSeqs[i].matchLength - MINMATCH);
+    }
+
+}
+
+#else /* no SSE */
+
+FORCE_INLINE_TEMPLATE void convertSequences_noRepcodes(SeqDef* dstSeqs,
+                const ZSTD_Sequence* const inSeqs, size_t nbSequences)
+{
+    size_t n;
+    for (n=0; n<nbSequences; n++) {
+        dstSeqs[n].offBase = OFFSET_TO_OFFBASE(inSeqs[n].offset);
+        /* note: doesn't work if one length is > 65535 */
+        dstSeqs[n].litLength = (U16)inSeqs[n].litLength;
+        dstSeqs[n].mlBase = (U16)(inSeqs[n].matchLength - MINMATCH);
+    }
+}
+
+#endif
+
+/*
+ * Precondition: Sequences must end on an explicit Block Delimiter
  * @return: 0 on success, or an error code.
  * Note: Sequence validation functionality has been disabled (removed).
  * This is helpful to generate a lean main pipeline, improving performance.
  * It may be re-inserted later.
  */
-size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
-                        const ZSTD_Sequence* const inSeqs, size_t nbSequences,
-                        int repcodeResolution)
+static size_t ZSTD_convertBlockSequences_internal(ZSTD_CCtx* cctx,
+                const ZSTD_Sequence* const inSeqs, size_t nbSequences,
+                int repcodeResolution)
 {
     Repcodes_t updatedRepcodes;
     size_t seqNb = 0;
@@ -7129,21 +7342,26 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
     assert(inSeqs[nbSequences-1].offset == 0);
 
     /* Convert Sequences from public format to internal format */
-    for (seqNb = 0; seqNb < nbSequences - 1 ; seqNb++) {
-        U32 const litLength = inSeqs[seqNb].litLength;
-        U32 const matchLength = inSeqs[seqNb].matchLength;
-        U32 offBase;
+    if (!repcodeResolution) {
+        convertSequences_noRepcodes(cctx->seqStore.sequencesStart, inSeqs, nbSequences);
+        cctx->seqStore.sequences += nbSequences;
+    } else {
+        for (seqNb = 0; seqNb < nbSequences - 1 ; seqNb++) {
+            U32 const litLength = inSeqs[seqNb].litLength;
+            U32 const matchLength = inSeqs[seqNb].matchLength;
+            U32 offBase;
 
-        if (!repcodeResolution) {
-            offBase = OFFSET_TO_OFFBASE(inSeqs[seqNb].offset);
-        } else {
-            U32 const ll0 = (litLength == 0);
-            offBase = ZSTD_finalizeOffBase(inSeqs[seqNb].offset, updatedRepcodes.rep, ll0);
-            ZSTD_updateRep(updatedRepcodes.rep, offBase, ll0);
+            if (!repcodeResolution) {
+                offBase = OFFSET_TO_OFFBASE(inSeqs[seqNb].offset);
+            } else {
+                U32 const ll0 = (litLength == 0);
+                offBase = ZSTD_finalizeOffBase(inSeqs[seqNb].offset, updatedRepcodes.rep, ll0);
+                ZSTD_updateRep(updatedRepcodes.rep, offBase, ll0);
+            }
+
+            DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
+            ZSTD_storeSeqOnly(&cctx->seqStore, litLength, offBase, matchLength);
         }
-
-        DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
-        ZSTD_storeSeqOnly(&cctx->seqStore, litLength, offBase, matchLength);
     }
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
@@ -7170,6 +7388,20 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     return 0;
+}
+
+static size_t ZSTD_convertBlockSequences_noRepcode(ZSTD_CCtx* cctx,
+                        const ZSTD_Sequence* const inSeqs, size_t nbSequences)
+{
+    return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
+}
+
+size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
+                        const ZSTD_Sequence* const inSeqs, size_t nbSequences,
+                        int repcodeResolution)
+{
+    (void)repcodeResolution;
+    return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
 }
 
 typedef struct {
