@@ -178,6 +178,7 @@ ZSTDLIB_API size_t ZSTD_decompress( void* dst, size_t dstCapacity,
  *           - ZSTD_CONTENTSIZE_UNKNOWN if the size cannot be determined
  *           - ZSTD_CONTENTSIZE_ERROR if an error occurred (e.g. invalid magic number, srcSize too small)
  *  note 1 : a 0 return value means the frame is valid but "empty".
+ *           When invoking this method on a skippable frame, it will return 0.
  *  note 2 : decompressed size is an optional field, it may not be present (typically in streaming mode).
  *           When `return==ZSTD_CONTENTSIZE_UNKNOWN`, data to decompress could be any size.
  *           In which case, it's necessary to use streaming mode to decompress data.
@@ -197,22 +198,26 @@ ZSTDLIB_API size_t ZSTD_decompress( void* dst, size_t dstCapacity,
 #define ZSTD_CONTENTSIZE_ERROR   (0ULL - 2)
 ZSTDLIB_API unsigned long long ZSTD_getFrameContentSize(const void *src, size_t srcSize);
 
-/*! ZSTD_getDecompressedSize() :
- *  NOTE: This function is now obsolete, in favor of ZSTD_getFrameContentSize().
+/*! ZSTD_getDecompressedSize() (obsolete):
+ *  This function is now obsolete, in favor of ZSTD_getFrameContentSize().
  *  Both functions work the same way, but ZSTD_getDecompressedSize() blends
  *  "empty", "unknown" and "error" results to the same return value (0),
  *  while ZSTD_getFrameContentSize() gives them separate return values.
  * @return : decompressed size of `src` frame content _if known and not empty_, 0 otherwise. */
 ZSTD_DEPRECATED("Replaced by ZSTD_getFrameContentSize")
-ZSTDLIB_API
-unsigned long long ZSTD_getDecompressedSize(const void* src, size_t srcSize);
+ZSTDLIB_API unsigned long long ZSTD_getDecompressedSize(const void* src, size_t srcSize);
 
 /*! ZSTD_findFrameCompressedSize() : Requires v1.4.0+
  * `src` should point to the start of a ZSTD frame or skippable frame.
  * `srcSize` must be >= first frame size
  * @return : the compressed size of the first frame starting at `src`,
  *           suitable to pass as `srcSize` to `ZSTD_decompress` or similar,
- *        or an error code if input is invalid */
+ *           or an error code if input is invalid
+ *  Note 1: this method is called _find*() because it's not enough to read the header,
+ *          it may have to scan through the frame's content, to reach its end.
+ *  Note 2: this method also works with Skippable Frames. In which case,
+ *          it returns the size of the complete skippable frame,
+ *          which is always equal to its content size + 8 bytes for headers. */
 ZSTDLIB_API size_t ZSTD_findFrameCompressedSize(const void* src, size_t srcSize);
 
 
@@ -1507,7 +1512,7 @@ typedef struct {
 /*! ZSTD_getFrameHeader() :
  *  decode Frame Header, or requires larger `srcSize`.
  * @return : 0, `zfhPtr` is correctly filled,
- *          >0, `srcSize` is too small, value is wanted `srcSize` amount,
+ *          >0, `srcSize` is too small, @return value is the wanted `srcSize` amount,
  *           or an error code, which can be tested using ZSTD_isError() */
 ZSTDLIB_STATIC_API size_t ZSTD_getFrameHeader(ZSTD_frameHeader* zfhPtr, const void* src, size_t srcSize);   /**< doesn't consume input */
 /*! ZSTD_getFrameHeader_advanced() :
@@ -1695,8 +1700,8 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
  *
  * Skippable frames begin with a 4-byte magic number. There are 16 possible choices of magic number,
  * ranging from ZSTD_MAGIC_SKIPPABLE_START to ZSTD_MAGIC_SKIPPABLE_START+15.
- * As such, the parameter magicVariant controls the exact skippable frame magic number variant used, so
- * the magic number used will be ZSTD_MAGIC_SKIPPABLE_START + magicVariant.
+ * As such, the parameter magicVariant controls the exact skippable frame magic number variant used,
+ * so the magic number used will be ZSTD_MAGIC_SKIPPABLE_START + magicVariant.
  *
  * Returns an error if destination buffer is not large enough, if the source size is not representable
  * with a 4-byte unsigned int, or if the parameter magicVariant is greater than 15 (and therefore invalid).
@@ -1704,26 +1709,28 @@ ZSTD_compressSequencesAndLiterals(ZSTD_CCtx* cctx,
  * @return : number of bytes written or a ZSTD error.
  */
 ZSTDLIB_STATIC_API size_t ZSTD_writeSkippableFrame(void* dst, size_t dstCapacity,
-                                            const void* src, size_t srcSize, unsigned magicVariant);
+                                             const void* src, size_t srcSize,
+                                                   unsigned magicVariant);
 
 /*! ZSTD_readSkippableFrame() :
- * Retrieves a zstd skippable frame containing data given by src, and writes it to dst buffer.
+ * Retrieves the content of a zstd skippable frame starting at @src, and writes it to @dst buffer.
  *
- * The parameter magicVariant will receive the magicVariant that was supplied when the frame was written,
- * i.e. magicNumber - ZSTD_MAGIC_SKIPPABLE_START.  This can be NULL if the caller is not interested
- * in the magicVariant.
+ * The parameter @magicVariant will receive the magicVariant that was supplied when the frame was written,
+ * i.e. magicNumber - ZSTD_MAGIC_SKIPPABLE_START.
+ * This can be NULL if the caller is not interested in the magicVariant.
  *
  * Returns an error if destination buffer is not large enough, or if the frame is not skippable.
  *
  * @return : number of bytes written or a ZSTD error.
  */
-ZSTDLIB_API size_t ZSTD_readSkippableFrame(void* dst, size_t dstCapacity, unsigned* magicVariant,
-                                            const void* src, size_t srcSize);
+ZSTDLIB_STATIC_API size_t ZSTD_readSkippableFrame(void* dst, size_t dstCapacity,
+                                                  unsigned* magicVariant,
+                                                  const void* src, size_t srcSize);
 
 /*! ZSTD_isSkippableFrame() :
  *  Tells if the content of `buffer` starts with a valid Frame Identifier for a skippable frame.
  */
-ZSTDLIB_API unsigned ZSTD_isSkippableFrame(const void* buffer, size_t size);
+ZSTDLIB_STATIC_API unsigned ZSTD_isSkippableFrame(const void* buffer, size_t size);
 
 
 

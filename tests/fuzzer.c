@@ -4110,12 +4110,18 @@ static int basicUnitTests(U32 const seed, double compressibility)
     DISPLAYLEVEL(3, "OK \n");
 
 
-    /* findFrameCompressedSize on skippable frames */
-    DISPLAYLEVEL(3, "test%3i : frame compressed size of skippable frame : ", testNb++);
-    {   const char* frame = "\x50\x2a\x4d\x18\x05\x0\x0\0abcde";
-        size_t const frameSrcSize = 13;
-        if (ZSTD_findFrameCompressedSize(frame, frameSrcSize) != frameSrcSize) goto _output_error; }
-    DISPLAYLEVEL(3, "OK \n");
+    /* frame operations on skippable frames */
+    {   const char skippableFrame[] = "\x50\x2a\x4d\x18\x05\x0\x0\0abcde";
+        size_t const skippableFrameSize = sizeof(skippableFrame) - 1 /* remove final /0 */;
+
+        DISPLAYLEVEL(3, "test%3i : ZSTD_findFrameCompressedSize on skippable frame : ", testNb++);
+        if (ZSTD_findFrameCompressedSize(skippableFrame, skippableFrameSize) != skippableFrameSize) goto _output_error;
+        DISPLAYLEVEL(3, "OK \n");
+
+        DISPLAYLEVEL(3, "test%3i : ZSTD_getFrameContentSize on skippable frame : ", testNb++);
+        if (ZSTD_getFrameContentSize(skippableFrame, skippableFrameSize) != 0) goto _output_error;
+        DISPLAYLEVEL(3, "OK \n");
+    }
 
     /* error string tests */
     DISPLAYLEVEL(3, "test%3i : testing ZSTD error code strings : ", testNb++);
