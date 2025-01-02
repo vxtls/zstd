@@ -955,7 +955,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
         ZSTD_freeCCtx(cctx);
     }
     {   /* ensure frame content size is missing */
-        ZSTD_frameHeader zfh;
+        ZSTD_FrameHeader zfh;
         size_t const ret = ZSTD_getFrameHeader(&zfh, compressedBuffer, compressedBufferSize);
         if (ret != 0 || zfh.frameContentSize !=  ZSTD_CONTENTSIZE_UNKNOWN) goto _output_error;
     }
@@ -2512,7 +2512,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
             CHECK_VAR(cSize, ZSTD_compressEnd(ctxDuplicated, compressedBuffer, ZSTD_compressBound(testSize),
                                           (const char*)CNBuffer + dictSize, testSize) );
-            {   ZSTD_frameHeader zfh;
+            {   ZSTD_FrameHeader zfh;
                 if (ZSTD_getFrameHeader(&zfh, compressedBuffer, cSize)) goto _output_error;
                 if ((zfh.frameContentSize != testSize) && (zfh.frameContentSize != 0)) goto _output_error;
         }   }
@@ -3585,7 +3585,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
         DISPLAYLEVEL(3, "test%3i : decompress of magic-less frame : ", testNb++);
         ZSTD_DCtx_reset(dctx, ZSTD_reset_session_and_parameters);
         CHECK_Z( ZSTD_DCtx_setParameter(dctx, ZSTD_d_format, ZSTD_f_zstd1_magicless) );
-        {   ZSTD_frameHeader zfh;
+        {   ZSTD_FrameHeader zfh;
             size_t const zfhrt = ZSTD_getFrameHeader_advanced(&zfh, compressedBuffer, cSize, ZSTD_f_zstd1_magicless);
             if (zfhrt != 0) goto _output_error;
         }
@@ -3943,7 +3943,7 @@ static int basicUnitTests(U32 const seed, double compressibility)
                 goto _output_error;
             }
         }
-        {   ZSTD_frameHeader zfh;
+        {   ZSTD_FrameHeader zfh;
             size_t const zfhStatus = ZSTD_getFrameHeader(&zfh, dst, compressedSize);
             if (zfhStatus != 0) {
                 DISPLAY("Error reading frame header\n");
@@ -4111,15 +4111,28 @@ static int basicUnitTests(U32 const seed, double compressibility)
 
 
     /* frame operations on skippable frames */
-    {   const char skippableFrame[] = "\x50\x2a\x4d\x18\x05\x0\x0\0abcde";
-        size_t const skippableFrameSize = sizeof(skippableFrame) - 1 /* remove final /0 */;
+    {   const char skippableFrame[] = "\x52\x2a\x4d\x18\x05\x0\x0\0abcde";
+        size_t const skippableFrameSize = sizeof(skippableFrame) - 1 /* remove the terminating /0 */;
 
         DISPLAYLEVEL(3, "test%3i : ZSTD_findFrameCompressedSize on skippable frame : ", testNb++);
-        if (ZSTD_findFrameCompressedSize(skippableFrame, skippableFrameSize) != skippableFrameSize) goto _output_error;
+        CHECK(ZSTD_findFrameCompressedSize(skippableFrame, skippableFrameSize) == skippableFrameSize);
         DISPLAYLEVEL(3, "OK \n");
 
         DISPLAYLEVEL(3, "test%3i : ZSTD_getFrameContentSize on skippable frame : ", testNb++);
-        if (ZSTD_getFrameContentSize(skippableFrame, skippableFrameSize) != 0) goto _output_error;
+        CHECK(ZSTD_getFrameContentSize(skippableFrame, skippableFrameSize) == 0);
+        DISPLAYLEVEL(3, "OK \n");
+
+        DISPLAYLEVEL(3, "test%3i : ZSTD_getFrameHeader on skippable frame : ", testNb++);
+        {   ZSTD_FrameHeader zfh;
+            size_t const s = ZSTD_getFrameHeader(&zfh, skippableFrame, skippableFrameSize);
+            CHECK_Z(s);
+            CHECK(s == 0); /* success */
+            CHECK(zfh.frameType == ZSTD_skippableFrame);
+            CHECK(zfh.headerSize == ZSTD_SKIPPABLEHEADERSIZE);
+            CHECK(zfh.dictID == 2); /* magic variant */
+            assert(skippableFrameSize >= ZSTD_SKIPPABLEHEADERSIZE);
+            CHECK(zfh.frameContentSize == skippableFrameSize - ZSTD_SKIPPABLEHEADERSIZE);
+        }
         DISPLAYLEVEL(3, "OK \n");
     }
 
@@ -4140,8 +4153,8 @@ static int basicUnitTests(U32 const seed, double compressibility)
         ZSTD_CCtx* const cctx = ZSTD_createCCtx();
         ZSTD_CDict* const lgCDict = ZSTD_createCDict(CNBuffer, size, 1);
         ZSTD_CDict* const smCDict = ZSTD_createCDict(CNBuffer, 1 KB, 1);
-        ZSTD_frameHeader lgHeader;
-        ZSTD_frameHeader smHeader;
+        ZSTD_FrameHeader lgHeader;
+        ZSTD_FrameHeader smHeader;
 
         CHECK_Z(ZSTD_compress_usingCDict(cctx, compressedBuffer, compressedBufferSize, CNBuffer, size, lgCDict));
         CHECK_Z(ZSTD_getFrameHeader(&lgHeader, compressedBuffer, compressedBufferSize));
@@ -4760,7 +4773,7 @@ static int fuzzerTests(U32 seed, unsigned nbTests, unsigned startTest, U32 const
         }   }
 
         /* frame header decompression test */
-        {   ZSTD_frameHeader zfh;
+        {   ZSTD_FrameHeader zfh;
             CHECK_Z( ZSTD_getFrameHeader(&zfh, cBuffer, cSize) );
             CHECK(zfh.frameContentSize != sampleSize, "Frame content size incorrect");
         }
@@ -4902,7 +4915,7 @@ static int fuzzerTests(U32 seed, unsigned nbTests, unsigned startTest, U32 const
         /* streaming decompression test */
         DISPLAYLEVEL(5, "fuzzer t%u: Bufferless streaming decompression test \n", testNb);
         /* ensure memory requirement is good enough (should always be true) */
-        {   ZSTD_frameHeader zfh;
+        {   ZSTD_FrameHeader zfh;
             CHECK( ZSTD_getFrameHeader(&zfh, cBuffer, ZSTD_FRAMEHEADERSIZE_MAX),
                   "ZSTD_getFrameHeader(): error retrieving frame information");
             {   size_t const roundBuffSize = ZSTD_decodingBufferSize_min(zfh.windowSize, zfh.frameContentSize);
