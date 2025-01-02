@@ -81,8 +81,8 @@ extern UTIL_time_t g_displayClock;
 /* Avoid fseek()'s 2GiB barrier with MSVC, macOS, *BSD, MinGW */
 #if defined(LIBC_NO_FSEEKO)
 /* Some older libc implementations don't include these functions (e.g. Bionic < 24) */
-#define LONG_SEEK fseek
-#define LONG_TELL ftell
+#  define LONG_SEEK fseek
+#  define LONG_TELL ftell
 #elif defined(_MSC_VER) && _MSC_VER >= 1400
 #   define LONG_SEEK _fseeki64
 #   define LONG_TELL _ftelli64
