@@ -237,19 +237,10 @@ static int ZSTD_rowMatchFinderUsed(const ZSTD_strategy strategy, const ZSTD_Para
 /* Returns row matchfinder usage given an initial mode and cParams */
 static ZSTD_ParamSwitch_e ZSTD_resolveRowMatchFinderMode(ZSTD_ParamSwitch_e mode,
                                                          const ZSTD_compressionParameters* const cParams) {
-#if defined(ZSTD_ARCH_X86_SSE2) || defined(ZSTD_ARCH_ARM_NEON)
-    int const kHasSIMD128 = 1;
-#else
-    int const kHasSIMD128 = 0;
-#endif
     if (mode != ZSTD_ps_auto) return mode; /* if requested enabled, but no SIMD, we still will use row matchfinder */
     mode = ZSTD_ps_disable;
     if (!ZSTD_rowMatchFinderSupported(cParams->strategy)) return mode;
-    if (kHasSIMD128) {
-        if (cParams->windowLog > 14) mode = ZSTD_ps_enable;
-    } else {
-        if (cParams->windowLog > 17) mode = ZSTD_ps_enable;
-    }
+    if (cParams->windowLog > 14) mode = ZSTD_ps_enable;
     return mode;
 }
 
