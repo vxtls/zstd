@@ -11,10 +11,6 @@
 #ifndef ZSTD_OPT_H
 #define ZSTD_OPT_H
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #include "zstd_compress_internal.h"
 
 #if !defined(ZSTD_EXCLUDE_BTLAZY2_BLOCK_COMPRESSOR) \
@@ -71,10 +67,6 @@ size_t ZSTD_compressBlock_btultra2(
 #define ZSTD_COMPRESSBLOCK_BTULTRA_DICTMATCHSTATE NULL
 #define ZSTD_COMPRESSBLOCK_BTULTRA_EXTDICT NULL
 #define ZSTD_COMPRESSBLOCK_BTULTRA2 NULL
-#endif
-
-#if defined (__cplusplus)
-}
 #endif
 
 #endif /* ZSTD_OPT_H */

@@ -7,16 +7,22 @@
  * in the COPYING file in the root directory of this source tree).
  * You may select, at your option, one of the above-listed licenses.
  */
-#if defined (__cplusplus)
-extern "C" {
-#endif
 
 #ifndef ZSTD_H_235446
 #define ZSTD_H_235446
 
+
 /* ======   Dependencies   ======*/
 #include <stddef.h>   /* size_t */
 
+#include "zstd_errors.h" /* list of errors */
+#if defined(ZSTD_STATIC_LINKING_ONLY) && !defined(ZSTD_H_ZSTD_STATIC_LINKING_ONLY)
+#include <limits.h>   /* INT_MAX */
+#endif /* ZSTD_STATIC_LINKING_ONLY */
+
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /* =====   ZSTDLIB_API : control library symbols visibility   ===== */
 #ifndef ZSTDLIB_VISIBLE
@@ -245,7 +251,6 @@ ZSTDLIB_API size_t ZSTD_compressBound(size_t srcSize); /*!< maximum compressed s
 
 
 /*======  Error helper functions  ======*/
-#include "zstd_errors.h" /* list of errors */
 /* ZSTD_isError() :
  * Most ZSTD_* functions returning a size_t value can be tested for error,
  * using ZSTD_isError().
@@ -1205,6 +1210,10 @@ ZSTDLIB_API size_t ZSTD_sizeof_DStream(const ZSTD_DStream* zds);
 ZSTDLIB_API size_t ZSTD_sizeof_CDict(const ZSTD_CDict* cdict);
 ZSTDLIB_API size_t ZSTD_sizeof_DDict(const ZSTD_DDict* ddict);
 
+#if defined (__cplusplus)
+}
+#endif
+
 #endif  /* ZSTD_H_235446 */
 
 
@@ -1220,7 +1229,9 @@ ZSTDLIB_API size_t ZSTD_sizeof_DDict(const ZSTD_DDict* ddict);
 #if defined(ZSTD_STATIC_LINKING_ONLY) && !defined(ZSTD_H_ZSTD_STATIC_LINKING_ONLY)
 #define ZSTD_H_ZSTD_STATIC_LINKING_ONLY
 
-#include <limits.h>   /* INT_MAX */
+#if defined (__cplusplus)
+extern "C" {
+#endif
 
 /* This can be overridden externally to hide static symbols. */
 #ifndef ZSTDLIB_STATIC_API
@@ -3179,8 +3190,8 @@ ZSTDLIB_STATIC_API size_t ZSTD_decompressBlock(ZSTD_DCtx* dctx, void* dst, size_
 ZSTD_DEPRECATED("The block API is deprecated in favor of the normal compression API. See docs.")
 ZSTDLIB_STATIC_API size_t ZSTD_insertBlock    (ZSTD_DCtx* dctx, const void* blockStart, size_t blockSize);  /**< insert uncompressed block into `dctx` history. Useful for multi-blocks decompression. */
 
-#endif   /* ZSTD_H_ZSTD_STATIC_LINKING_ONLY */
-
 #if defined (__cplusplus)
 }
 #endif
+
+#endif   /* ZSTD_H_ZSTD_STATIC_LINKING_ONLY */

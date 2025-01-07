@@ -11,10 +11,6 @@
 #ifndef ZSTD_FAST_H
 #define ZSTD_FAST_H
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #include "../common/mem.h"      /* U32 */
 #include "zstd_compress_internal.h"
 
@@ -30,9 +26,5 @@ size_t ZSTD_compressBlock_fast_dictMatchState(
 size_t ZSTD_compressBlock_fast_extDict(
         ZSTD_MatchState_t* ms, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         void const* src, size_t srcSize);
-
-#if defined (__cplusplus)
-}
-#endif
 
 #endif /* ZSTD_FAST_H */

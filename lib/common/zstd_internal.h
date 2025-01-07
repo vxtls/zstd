@@ -39,10 +39,6 @@
 #  define ZSTD_TRACE 0
 #endif
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 /* ---- static assert (debug) --- */
 #define ZSTD_STATIC_ASSERT(c) DEBUG_STATIC_ASSERT(c)
 #define ZSTD_isError ERR_isError   /* for inlining */
@@ -324,9 +320,5 @@ MEM_STATIC int ZSTD_cpuSupportsBmi2(void)
     ZSTD_cpuid_t cpuid = ZSTD_cpuid();
     return ZSTD_cpuid_bmi1(cpuid) && ZSTD_cpuid_bmi2(cpuid);
 }
-
-#if defined (__cplusplus)
-}
-#endif
 
 #endif   /* ZSTD_CCOMMON_H_MODULE */

@@ -14,10 +14,6 @@
   * and display progress result and final summary
   */
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #ifndef BENCH_ZSTD_H_3242387
 #define BENCH_ZSTD_H_3242387
 
@@ -25,7 +21,6 @@ extern "C" {
 #include <stddef.h>   /* size_t */
 #define ZSTD_STATIC_LINKING_ONLY   /* ZSTD_compressionParameters */
 #include "../lib/zstd.h"     /* ZSTD_compressionParameters */
-
 
 /* ===  Constants  === */
 
@@ -194,7 +189,3 @@ BMK_benchOutcome_t BMK_benchMemAdvanced(const void* srcBuffer, size_t srcSize,
 
 
 #endif   /* BENCH_ZSTD_H_3242387 */
-
-#if defined (__cplusplus)
-}
-#endif

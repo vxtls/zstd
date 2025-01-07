@@ -11,10 +11,6 @@
 #ifndef ZSTD_FILEIO_COMMON_H
 #define ZSTD_FILEIO_COMMON_H
 
-#if defined (__cplusplus)
-extern "C" {
-#endif
-
 #include "../lib/common/mem.h"     /* U32, U64 */
 #include "fileio_types.h"
 #include "platform.h"
@@ -122,7 +118,4 @@ extern UTIL_time_t g_displayClock;
 #   define LONG_TELL ftell
 #endif
 
-#if defined (__cplusplus)
-}
-#endif
 #endif /* ZSTD_FILEIO_COMMON_H */
