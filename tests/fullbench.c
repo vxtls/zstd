@@ -687,6 +687,23 @@ local_convertSequences(const void* input, size_t inputSize,
     return nbSeqs;
 }
 
+static size_t
+check_compressedSequences(const void* compressed, size_t cSize, const void* orig, size_t origSize)
+{
+    size_t decSize;
+    int diff;
+    void* decompressed = malloc(origSize);
+    if (decompressed == NULL) return 2;
+
+    decSize = ZSTD_decompress(decompressed, origSize, compressed, cSize);
+    if (decSize != origSize) { free(decompressed); DISPLAY("ZSTD_decompress failed (%zu) ", decSize); return 1; }
+
+    diff = memcmp(decompressed, orig, origSize);
+    if (diff) { free(decompressed); return 1; }
+
+    free(decompressed);
+    return 0;
+}
 
 static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
 {
@@ -714,40 +731,43 @@ static PrepResult prepShorterDstCapacity(const void* src, size_t srcSize, int cL
 *  List of Scenarios
 *********************************************************/
 
-/* if PrepFunction_f returns 0, benchmarking is cancelled */
+/* if PrepFunction_f returns PrepResult.prepBuffSize == 0, benchmarking is cancelled */
 typedef PrepResult (*PrepFunction_f)(const void* src, size_t srcSize, int cLevel);
 typedef size_t (*BenchedFunction_f)(const void* src, size_t srcSize, void* dst, size_t dstSize, void* opaque);
+/* must return 0, otherwise verification is considered failed */
+typedef size_t (*VerifFunction_f)(const void* processed, size_t procSize, const void* input, size_t inputSize);
 
 typedef struct {
     const char* name;
     PrepFunction_f preparation_f;
-    BenchedFunction_f benchedFunction;
+    BenchedFunction_f benched_f;
+    VerifFunction_f verif_f; /* optional */
 } BenchScenario;
 
 static BenchScenario kScenarios[] = {
-    { "compress", NULL, local_ZSTD_compress },
-    { "decompress", prepDecompress, local_ZSTD_decompress },
-    { "compress_freshCCtx", NULL, local_ZSTD_compress_freshCCtx },
-    { "decompressDCtx", prepDecompress, local_ZSTD_decompressDCtx },
-    { "compressContinue", NULL, local_ZSTD_compressContinue },
-    { "compressContinue_extDict", NULL, local_ZSTD_compressContinue_extDict },
-    { "decompressContinue", prepDecompress, local_ZSTD_decompressContinue },
-    { "compressStream", NULL, local_ZSTD_compressStream },
-    { "compressStream_freshCCtx", NULL, local_ZSTD_compressStream_freshCCtx },
-    { "decompressStream", prepDecompress, local_ZSTD_decompressStream },
-    { "compress2", NULL, local_ZSTD_compress2 },
-    { "compressStream2, end", NULL, local_ZSTD_compressStream2_end },
-    { "compressStream2, end & short", prepShorterDstCapacity, local_ZSTD_compressStream2_end },
-    { "compressStream2, continue", NULL, local_ZSTD_compressStream2_continue },
-    { "compressStream2, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue },
-    { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end },
-    { "compressSequences", prepSequences, local_compressSequences },
-    { "compressSequencesAndLiterals", prepSequencesAndLiterals, local_compressSequencesAndLiterals },
-    { "convertSequences (1st block)", prepConvertSequences, local_convertSequences },
+    { "compress", NULL, local_ZSTD_compress, NULL },
+    { "decompress", prepDecompress, local_ZSTD_decompress, NULL },
+    { "compress_freshCCtx", NULL, local_ZSTD_compress_freshCCtx, NULL },
+    { "decompressDCtx", prepDecompress, local_ZSTD_decompressDCtx, NULL },
+    { "compressContinue", NULL, local_ZSTD_compressContinue, NULL },
+    { "compressContinue_extDict", NULL, local_ZSTD_compressContinue_extDict, NULL },
+    { "decompressContinue", prepDecompress, local_ZSTD_decompressContinue, NULL },
+    { "compressStream", NULL, local_ZSTD_compressStream, NULL },
+    { "compressStream_freshCCtx", NULL, local_ZSTD_compressStream_freshCCtx, NULL },
+    { "decompressStream", prepDecompress, local_ZSTD_decompressStream, NULL },
+    { "compress2", NULL, local_ZSTD_compress2, NULL },
+    { "compressStream2, end", NULL, local_ZSTD_compressStream2_end, NULL },
+    { "compressStream2, end & short", prepShorterDstCapacity, local_ZSTD_compressStream2_end, NULL },
+    { "compressStream2, continue", NULL, local_ZSTD_compressStream2_continue, NULL },
+    { "compressStream2, -T2, continue", NULL, local_ZSTD_compress_generic_T2_continue, NULL },
+    { "compressStream2, -T2, end", NULL, local_ZSTD_compress_generic_T2_end, NULL },
+    { "compressSequences", prepSequences, local_compressSequences, check_compressedSequences },
+    { "compressSequencesAndLiterals", prepSequencesAndLiterals, local_compressSequencesAndLiterals, check_compressedSequences },
+    { "convertSequences (1st block)", prepConvertSequences, local_convertSequences, NULL },
 #ifndef ZSTD_DLL_IMPORT
-    { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader },
-    { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock },
-    { "decodeSeqHeaders (1st block)", prepSequences1stBlock, local_ZSTD_decodeSeqHeaders },
+    { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader, NULL },
+    { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock, NULL },
+    { "decodeSeqHeaders (1st block)", prepSequences1stBlock, local_ZSTD_decodeSeqHeaders, NULL },
 #endif
 };
 #define NB_SCENARIOS (sizeof(kScenarios) / sizeof(kScenarios[0]))
@@ -767,13 +787,15 @@ static int benchMem(unsigned scenarioID,
     const char* benchName;
     BMK_benchFn_t benchFunction;
     PrepFunction_f prep_f;
+    VerifFunction_f verif_f;
     int errorcode = 0;
 
     if (scenarioID >= NB_SCENARIOS) return 0; /* scenario doesn't exist */
 
     benchName = kScenarios[scenarioID].name;
-    benchFunction = kScenarios[scenarioID].benchedFunction;
+    benchFunction = kScenarios[scenarioID].benched_f;
     prep_f = kScenarios[scenarioID].preparation_f;
+    verif_f = kScenarios[scenarioID].verif_f;
     if (prep_f == NULL) prep_f = prepCopy; /* default */
 
     /* Initialization */
@@ -857,6 +879,14 @@ static int benchMem(unsigned scenarioID,
                         scenarioID, benchName,
                         (double)origSrcSize * TIMELOOP_NANOSEC / bestResult.nanoSecPerRun / MB_UNIT,
                         (unsigned)newResult.sumOfReturn );
+
+                if (verif_f) {
+                    size_t const vRes = verif_f(dst, newResult.sumOfReturn, origSrc, origSrcSize);
+                    if (vRes) {
+                        DISPLAY(" validation failed ! (%zu)\n", vRes);
+                        break;
+                    }
+                }
             }
 
             if ( BMK_isCompleted_TimedFn(tfs) ) break;

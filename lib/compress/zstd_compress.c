@@ -7205,7 +7205,7 @@ void convertSequences_noRepcodes(
          */
     }
 
-    /* Handle leftover if nbSequences is odd */
+    /* Handle leftover if @nbSequences is odd */
     if (i < nbSequences) {
         /* Fallback: process last sequence */
         assert(i == nbSequences - 1);
@@ -7301,16 +7301,23 @@ static void convertSequences_noRepcodes(SeqDef* dstSeqs,
 
 #else /* no SSE */
 
-FORCE_INLINE_TEMPLATE void convertSequences_noRepcodes(SeqDef* dstSeqs,
+static size_t
+convertSequences_noRepcodes(SeqDef* dstSeqs,
                 const ZSTD_Sequence* const inSeqs, size_t nbSequences)
 {
+    size_t longLen = 0;
     size_t n;
     for (n=0; n<nbSequences; n++) {
         dstSeqs[n].offBase = OFFSET_TO_OFFBASE(inSeqs[n].offset);
         /* note: doesn't work if one length is > 65535 */
         dstSeqs[n].litLength = (U16)inSeqs[n].litLength;
         dstSeqs[n].mlBase = (U16)(inSeqs[n].matchLength - MINMATCH);
+        if (UNLIKELY(inSeqs[n].litLength > 65535)) {
+            assert(longLen == 0);
+            longLen = n + nbSequences + 1;
+        }
     }
+    return longLen;
 }
 
 #endif
@@ -7343,8 +7350,22 @@ static size_t ZSTD_convertBlockSequences_internal(ZSTD_CCtx* cctx,
 
     /* Convert Sequences from public format to internal format */
     if (!repcodeResolution) {
-        convertSequences_noRepcodes(cctx->seqStore.sequencesStart, inSeqs, nbSequences);
-        cctx->seqStore.sequences += nbSequences;
+        size_t const longl = convertSequences_noRepcodes(cctx->seqStore.sequencesStart, inSeqs, nbSequences-1);
+        cctx->seqStore.sequences = cctx->seqStore.sequencesStart + nbSequences-1;
+        if (longl) {
+            DEBUGLOG(5, "long length");
+            assert(cctx->seqStore.longLengthType == ZSTD_llt_none);
+            if (longl <= nbSequences-1) {
+                DEBUGLOG(5, "long match length detected at pos %zu", longl-1);
+                cctx->seqStore.longLengthType = ZSTD_llt_matchLength;
+                cctx->seqStore.longLengthPos = (U32)(longl-1);
+            } else {
+                DEBUGLOG(5, "long literals length detected at pos %zu", longl-nbSequences);
+                assert(longl <= 2* (nbSequences-1));
+                cctx->seqStore.longLengthType = ZSTD_llt_literalLength;
+                cctx->seqStore.longLengthPos = (U32)(longl-nbSequences);
+            }
+        }
     } else {
         for (seqNb = 0; seqNb < nbSequences - 1 ; seqNb++) {
             U32 const litLength = inSeqs[seqNb].litLength;
