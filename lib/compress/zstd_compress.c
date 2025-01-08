@@ -7395,13 +7395,7 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
     return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
 }
 
-typedef struct {
-    size_t nbSequences;
-    size_t blockSize;
-    size_t litSize;
-} BlockSummary;
-
-static BlockSummary get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
+BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
 {
     size_t blockSize = 0;
     size_t litSize = 0;
@@ -7456,7 +7450,7 @@ ZSTD_compressSequencesAndLiterals_internal(ZSTD_CCtx* cctx,
 
     while (nbSequences) {
         size_t compressedSeqsSize, cBlockSize, conversionStatus;
-        BlockSummary const block = get1BlockSummary(inSeqs, nbSequences);
+        BlockSummary const block = ZSTD_get1BlockSummary(inSeqs, nbSequences);
         U32 const lastBlock = (block.nbSequences == nbSequences);
         FORWARD_IF_ERROR(block.nbSequences, "Error while trying to determine nb of sequences for a block");
         assert(block.nbSequences <= nbSequences);

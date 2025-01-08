@@ -1525,6 +1525,13 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
                         const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                         int const repcodeResolution);
 
+typedef struct {
+    size_t nbSequences;
+    size_t blockSize;
+    size_t litSize;
+} BlockSummary;
+
+BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs);
 
 /* ==============================================================
  * Private declarations

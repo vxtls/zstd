@@ -705,6 +705,26 @@ check_compressedSequences(const void* compressed, size_t cSize, const void* orig
     return 0;
 }
 
+static size_t
+local_get1BlockSummary(const void* input, size_t inputSize,
+                       void* dst, size_t dstCapacity,
+                       void* payload)
+{
+    const char* ip = input;
+    size_t const blockSize = MEM_read32(ip);
+    size_t const nbSeqs = MEM_read32(ip+=4);
+    const ZSTD_Sequence* seqs = (const ZSTD_Sequence*)(const void*)(ip+=4);
+    ZSTD_CCtx_reset(g_zcc, ZSTD_reset_session_and_parameters);
+    ZSTD_resetSeqStore(&g_zcc->seqStore);
+    ZSTD_CCtx_setParameter(g_zcc, ZSTD_c_blockDelimiters, ZSTD_sf_explicitBlockDelimiters);
+    assert(8 + nbSeqs * sizeof(ZSTD_Sequence) == inputSize); (void)inputSize;
+    (void)dst; (void)dstCapacity;
+    (void)payload; (void)blockSize;
+
+    (void)ZSTD_get1BlockSummary(seqs, nbSeqs);
+    return nbSeqs;
+}
+
 static PrepResult prepCopy(const void* src, size_t srcSize, int cLevel)
 {
     PrepResult r = PREPRESULT_INIT;
@@ -764,6 +784,7 @@ static BenchScenario kScenarios[] = {
     { "compressSequences", prepSequences, local_compressSequences, check_compressedSequences },
     { "compressSequencesAndLiterals", prepSequencesAndLiterals, local_compressSequencesAndLiterals, check_compressedSequences },
     { "convertSequences (1st block)", prepConvertSequences, local_convertSequences, NULL },
+    { "get1BlockSummary (1st block)", prepConvertSequences, local_get1BlockSummary, NULL },
 #ifndef ZSTD_DLL_IMPORT
     { "decodeLiteralsHeader (1st block)", prepLiterals, local_ZSTD_decodeLiteralsHeader, NULL },
     { "decodeLiteralsBlock (1st block)", prepLiterals, local_ZSTD_decodeLiteralsBlock, NULL },
