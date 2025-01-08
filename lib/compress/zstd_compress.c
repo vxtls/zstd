@@ -15,9 +15,7 @@
 #include "../common/zstd_deps.h"  /* INT_MAX, ZSTD_memset, ZSTD_memcpy */
 #include "../common/mem.h"
 #include "../common/error_private.h"
-#include "compiler.h"
 #include "hist.h"           /* HIST_countFast_wksp */
-#include "zstd_internal.h"
 #define FSE_STATIC_LINKING_ONLY   /* FSE_encodeSymbol */
 #include "../common/fse.h"
 #include "../common/huf.h"
