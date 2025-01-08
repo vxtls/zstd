@@ -7176,6 +7176,17 @@ size_t convertSequences_noRepcodes(
 #define PERM_LANE_0X_E8 0xE8  /* [0,2,2,3] in lane indices */
 
     size_t longLen = 0, i = 0;
+
+    /* AVX permutation depends on the specific definition of target structures */
+    ZSTD_STATIC_ASSERT(sizeof(ZSTD_Sequence) == 16);
+    ZSTD_STATIC_ASSERT(offsetof(ZSTD_Sequence, offset) == 0);
+    ZSTD_STATIC_ASSERT(offsetof(ZSTD_Sequence, litLength) == 4);
+    ZSTD_STATIC_ASSERT(offsetof(ZSTD_Sequence, matchLength) == 8);
+    ZSTD_STATIC_ASSERT(sizeof(SeqDef) == 8);
+    ZSTD_STATIC_ASSERT(offsetof(SeqDef, offBase) == 0);
+    ZSTD_STATIC_ASSERT(offsetof(SeqDef, litLength) == 4);
+    ZSTD_STATIC_ASSERT(offsetof(SeqDef, mlBase) == 6);
+
     /* Process 2 sequences per loop iteration */
     for (; i + 1 < nbSequences; i += 2) {
         /* Load 2 ZSTD_Sequence (32 bytes) */
@@ -7398,6 +7409,7 @@ BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
     __m256i sumVec = zeroVec;  /* accumulates match+lit in 32-bit lanes */
     ALIGNED32 U32 tmp[8];      /* temporary buffer for reduction */
     size_t mSum = 0, lSum = 0;
+    ZSTD_STATIC_ASSERT(sizeof(ZSTD_Sequence) == 16);
 
     /* Process 2 structs (32 bytes) at a time */
     for (i = 0; i + 2 <= nbSeqs; i += 2) {
@@ -7408,6 +7420,7 @@ BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
         int cmp_res      = _mm256_movemask_epi8(cmp);
         /* indices for match lengths correspond to bits [8..11], [24..27]
          * => combined mask = 0x0F000F00 */
+        ZSTD_STATIC_ASSERT(offsetof(ZSTD_Sequence, matchLength) == 8);
         if (cmp_res & 0x0F000F00) break;
         /* Accumulate in sumVec */
         sumVec           = _mm256_add_epi32(sumVec, data);
