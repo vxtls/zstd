@@ -7396,7 +7396,6 @@ BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
     size_t i;
     __m256i const zeroVec = _mm256_setzero_si256();
     __m256i sumVec = zeroVec;  /* accumulates match+lit in 32-bit lanes */
-    __m256i shuffle32;         /* shuffling control */
     ALIGNED32 U32 tmp[8];      /* temporary buffer for reduction */
     size_t mSum = 0, lSum = 0;
 
