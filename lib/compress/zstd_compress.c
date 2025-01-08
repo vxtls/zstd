@@ -7297,7 +7297,7 @@ convertSequences_noRepcodes(SeqDef* dstSeqs,
  * This is helpful to generate a lean main pipeline, improving performance.
  * It may be re-inserted later.
  */
-static size_t ZSTD_convertBlockSequences_internal(ZSTD_CCtx* cctx,
+size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
                 const ZSTD_Sequence* const inSeqs, size_t nbSequences,
                 int repcodeResolution)
 {
@@ -7377,20 +7377,6 @@ static size_t ZSTD_convertBlockSequences_internal(ZSTD_CCtx* cctx,
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
     return 0;
-}
-
-static size_t ZSTD_convertBlockSequences_noRepcode(ZSTD_CCtx* cctx,
-                        const ZSTD_Sequence* const inSeqs, size_t nbSequences)
-{
-    return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
-}
-
-size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
-                        const ZSTD_Sequence* const inSeqs, size_t nbSequences,
-                        int repcodeResolution)
-{
-    (void)repcodeResolution;
-    return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
 }
 
 #if defined(__AVX2__)
