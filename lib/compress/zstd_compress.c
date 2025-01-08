@@ -7395,56 +7395,65 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
     return ZSTD_convertBlockSequences_internal(cctx, inSeqs, nbSequences, 0);
 }
 
-#if 0 && defined(__AVX2__)
+#if defined(__AVX2__)
 
 /* C90-compatible alignment macro (GCC/Clang). Adjust for other compilers if needed. */
 #if defined(__GNUC__)
 #  define ALIGNED32 __attribute__((aligned(32)))
+#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) /* C11 */
+#  define ALIGNED32 alignas(32)
 #else
+   /* this compiler will require its own alignment instruction */
 #  define ALIGNED32
 #endif
 
 BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
 {
     size_t i;
-    __m256i sumVec;            /* accumulates match+lit in 32-bit lanes */
-    __m256i mask;              /* shuffling control */
-    ALIGNED32 int tmp[8];      /* temporary buffer for reduction */
-    uint64_t sum;
-    int k;
-
-    sumVec = _mm256_setzero_si256();
-    mask   = _mm256_setr_epi32(
-                 1,5,  /* match(0), match(1) */
-                 2,6,  /* lit(0),   lit(1)   */
-                 1,5,  /* match(0), match(1) */
-                 2,6   /* lit(0),   lit(1)   */
-             );
+    __m256i const zeroVec = _mm256_setzero_si256();
+    __m256i sumVec = zeroVec;  /* accumulates match+lit in 32-bit lanes */
+    __m256i shuffle32;         /* shuffling control */
+    ALIGNED32 U32 tmp[8];      /* temporary buffer for reduction */
+    size_t mSum = 0, lSum = 0;
 
     /* Process 2 structs (32 bytes) at a time */
-    for (i = 0; i + 2 <= count; i += 2) {
-        /* Load two consecutive MyStructs (8×4 = 32 bytes) */
-        __m256i data     = _mm256_loadu_si256((const __m256i*)&arr[i]);
-        /* Shuffle out lanes 1,2,5,6 => match(0), match(1), lit(0), lit(1), repeated */
-        __m256i selected = _mm256_permutevar8x32_epi32(data, mask);
+    for (i = 0; i + 2 <= nbSeqs; i += 2) {
+        /* Load two consecutive ZSTD_Sequence (8×4 = 32 bytes) */
+        __m256i data     = _mm256_loadu_si256((const __m256i*)&seqs[i]);
+        /* check end of block signal */
+        __m256i cmp      = _mm256_cmpeq_epi32(data, zeroVec);
+        int cmp_res      = _mm256_movemask_epi8(cmp);
+        /* indices for match lengths correspond to bits [8..11], [24..27]
+         * => combined mask = 0x0F000F00 */
+        if (cmp_res & 0x0F000F00) break;
         /* Accumulate in sumVec */
-        sumVec           = _mm256_add_epi32(sumVec, selected);
+        sumVec           = _mm256_add_epi32(sumVec, data);
     }
 
-    /* Horizontal reduction of sumVec */
+    /* Horizontal reduction */
     _mm256_store_si256((__m256i*)tmp, sumVec);
-    sum = 0;
-    for (k = 0; k < 8; k++) {
-        sum += (uint64_t)tmp[k]; /* each lane is match+lit from pairs, repeated twice */
+    lSum = tmp[1] + tmp[5];
+    mSum = tmp[2] + tmp[6];
+
+    /* Handle the leftover */
+    for (; i < nbSeqs; i++) {
+        lSum += seqs[i].litLength;
+        mSum += seqs[i].matchLength;
+        if (seqs[i].matchLength == 0) break; /* end of block */
     }
 
-    /* Handle the leftover (if count is odd) */
-    for (; i < count; i++) {
-        sum += arr[i].matchLength;
-        sum += arr[i].litLength;
+    if (i==nbSeqs) {
+        /* reaching end of sequences: end of block signal was not present */
+        BlockSummary bs;
+        bs.nbSequences = ERROR(externalSequences_invalid);
+        return bs;
     }
-
-    return sum;
+    {   BlockSummary bs;
+        bs.nbSequences = i+1;
+        bs.blockSize = lSum + mSum;
+        bs.litSize = lSum;
+        return bs;
+    }
 }
 
 #else
