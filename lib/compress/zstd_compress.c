@@ -7196,8 +7196,8 @@ size_t convertSequences_noRepcodes(
         __m256i vadd = _mm256_add_epi32(vin, addition);
 
         /* Check for long length */
-        __m256i cmp  = _mm256_cmpgt_epi32(vadd, limit);  // 0xFFFFFFFF for element > 65535
-        int cmp_res  = _mm256_movemask_epi8(cmp);
+        __m256i ll_cmp  = _mm256_cmpgt_epi32(vadd, limit);  /* 0xFFFFFFFF for element > 65535 */
+        int ll_res  = _mm256_movemask_epi8(ll_cmp);
 
         /* Shuffle bytes so each half gives us the 8 bytes we need */
         __m256i vshf = _mm256_shuffle_epi8(vadd, mask);
@@ -7228,7 +7228,7 @@ size_t convertSequences_noRepcodes(
          * indices for lengths correspond to bits [4..7], [8..11], [20..23], [24..27]
          * => combined mask = 0x0FF00FF0
          */
-        if (UNLIKELY((cmp_res & 0x0FF00FF0) != 0)) {
+        if (UNLIKELY((ll_res & 0x0FF00FF0) != 0)) {
             /* long length detected: let's figure out which one*/
             if (inSeqs[i].matchLength > 65535+MINMATCH) {
                 assert(longLen == 0);
@@ -7251,12 +7251,12 @@ size_t convertSequences_noRepcodes(
 
     /* Handle leftover if @nbSequences is odd */
     if (i < nbSequences) {
-        /* Fallback: process last sequence */
+        /* process last sequence */
         assert(i == nbSequences - 1);
         dstSeqs[i].offBase = OFFSET_TO_OFFBASE(inSeqs[i].offset);
-        /* note: doesn't work if one length is > 65535 */
         dstSeqs[i].litLength = (U16)inSeqs[i].litLength;
         dstSeqs[i].mlBase = (U16)(inSeqs[i].matchLength - MINMATCH);
+        /* check (unlikely) long lengths > 65535 */
         if (UNLIKELY(inSeqs[i].matchLength > 65535+MINMATCH)) {
             assert(longLen == 0);
             longLen = i + 1;
@@ -7271,8 +7271,8 @@ size_t convertSequences_noRepcodes(
 }
 
 /* the vector implementation could also be ported to SSSE3,
- * but since this implementation is targeting modern systems >= Sapphire Rapid,
- * it's not useful to develop and maintain code for older platforms (before AVX2) */
+ * but since this implementation is targeting modern systems (>= Sapphire Rapid),
+ * it's not useful to develop and maintain code for older pre-AVX2 platforms */
 
 #else /* no AVX2 */
 
@@ -7284,9 +7284,9 @@ convertSequences_noRepcodes(SeqDef* dstSeqs,
     size_t n;
     for (n=0; n<nbSequences; n++) {
         dstSeqs[n].offBase = OFFSET_TO_OFFBASE(inSeqs[n].offset);
-        /* note: doesn't work if one length is > 65535 */
         dstSeqs[n].litLength = (U16)inSeqs[n].litLength;
         dstSeqs[n].mlBase = (U16)(inSeqs[n].matchLength - MINMATCH);
+        /* check for long length > 65535 */
         if (UNLIKELY(inSeqs[n].matchLength > 65535+MINMATCH)) {
             assert(longLen == 0);
             longLen = n + 1;
