@@ -7157,15 +7157,15 @@ size_t convertSequences_noRepcodes(
          0, 1, 2, 3,       /* offset+2 */
          4, 5,             /* litLength (16 bits) */
          8, 9,             /* matchLength (16 bits) */
-         (char)0x80, (char)0x80, (char)0x80, (char)0x80,
-         (char)0x80, (char)0x80, (char)0x80, (char)0x80,
+         (BYTE)0x80, (BYTE)0x80, (BYTE)0x80, (BYTE)0x80,
+         (BYTE)0x80, (BYTE)0x80, (BYTE)0x80, (BYTE)0x80,
 
         /* For the upper 128 bits => sequence i+1 */
         16,17,18,19,       /* offset+2 */
         20,21,             /* litLength */
         24,25,             /* matchLength */
-        (char)0x80, (char)0x80, (char)0x80, (char)0x80,
-        (char)0x80, (char)0x80, (char)0x80, (char)0x80
+        (BYTE)0x80, (BYTE)0x80, (BYTE)0x80, (BYTE)0x80,
+        (BYTE)0x80, (BYTE)0x80, (BYTE)0x80, (BYTE)0x80
     );
 
     /*
