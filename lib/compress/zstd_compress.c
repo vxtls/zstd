@@ -6713,7 +6713,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
 
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
-    if (inSeqs[idx].litLength) {
+    if (idx < inSeqsSize && inSeqs[idx].litLength) {
         DEBUGLOG(6, "Storing last literals of size: %u", inSeqs[idx].litLength);
         ZSTD_storeLastLiterals(&cctx->seqStore, ip, inSeqs[idx].litLength);
         ip += inSeqs[idx].litLength;
