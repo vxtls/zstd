@@ -281,7 +281,7 @@
 #endif
 
 /*-**************************************************************
-*  Alignment check
+*  Alignment
 *****************************************************************/
 
 /* @return 1 if @u is a 2^n value, 0 otherwise
@@ -314,6 +314,19 @@ MEM_STATIC int ZSTD_isPower2(size_t u) {
 
 # endif
 #endif /* ZSTD_ALIGNOF */
+
+#ifndef ZSTD_ALIGNED
+/* C90-compatible alignment macro (GCC/Clang). Adjust for other compilers if needed. */
+# if defined(__GNUC__)
+#  define ZSTD_ALIGNED(a) __attribute__((aligned(a)))
+# elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) /* C11 */
+#  define ZSTD_ALIGNED(a) alignas(a)
+# else
+   /* this compiler will require its own alignment instruction */
+#  define ZSTD_ALIGNED(...)
+# endif
+#endif /* ZSTD_ALIGNED */
+
 
 /*-**************************************************************
 *  Sanitizer

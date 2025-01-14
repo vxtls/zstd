@@ -7386,22 +7386,12 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
 
 #if defined(ZSTD_ARCH_X86_AVX2)
 
-/* C90-compatible alignment macro (GCC/Clang). Adjust for other compilers if needed. */
-#if defined(__GNUC__)
-#  define ALIGNED32 __attribute__((aligned(32)))
-#elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) /* C11 */
-#  define ALIGNED32 alignas(32)
-#else
-   /* this compiler will require its own alignment instruction */
-#  define ALIGNED32
-#endif
-
 BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
 {
     size_t i;
     __m256i const zeroVec = _mm256_setzero_si256();
     __m256i sumVec = zeroVec;  /* accumulates match+lit in 32-bit lanes */
-    ALIGNED32 U32 tmp[8];      /* temporary buffer for reduction */
+    ZSTD_ALIGNED(32) U32 tmp[8];      /* temporary buffer for reduction */
     size_t mSum = 0, lSum = 0;
     ZSTD_STATIC_ASSERT(sizeof(ZSTD_Sequence) == 16);
 
