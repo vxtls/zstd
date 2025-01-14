@@ -7384,7 +7384,7 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
     return 0;
 }
 
-#if defined(__AVX2__)
+#if defined(ZSTD_ARCH_X86_AVX2)
 
 /* C90-compatible alignment macro (GCC/Clang). Adjust for other compilers if needed. */
 #if defined(__GNUC__)
