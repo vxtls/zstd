@@ -7342,7 +7342,7 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
                 DEBUGLOG(5, "long literals length detected at pos %zu", longl-nbSequences);
                 assert(longl <= 2* (nbSequences-1));
                 cctx->seqStore.longLengthType = ZSTD_llt_literalLength;
-                cctx->seqStore.longLengthPos = (U32)(longl-nbSequences);
+                cctx->seqStore.longLengthPos = (U32)(longl-(nbSequences-1)-1);
             }
         }
     } else {
