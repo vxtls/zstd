@@ -6687,6 +6687,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
         ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offBase, matchLength);
         ip += matchLength + litLength;
     }
+    RETURN_ERROR_IF(idx == inSeqsSize, externalSequences_invalid, "Block delimiter not found.");
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
     assert(externalRepSearch != ZSTD_ps_auto);
@@ -6713,7 +6714,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
 
     ZSTD_memcpy(cctx->blockState.nextCBlock->rep, updatedRepcodes.rep, sizeof(Repcodes_t));
 
-    if (idx < inSeqsSize && inSeqs[idx].litLength) {
+    if (inSeqs[idx].litLength) {
         DEBUGLOG(6, "Storing last literals of size: %u", inSeqs[idx].litLength);
         ZSTD_storeLastLiterals(&cctx->seqStore, ip, inSeqs[idx].litLength);
         ip += inSeqs[idx].litLength;
