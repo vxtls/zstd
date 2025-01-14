@@ -7349,18 +7349,12 @@ size_t ZSTD_convertBlockSequences(ZSTD_CCtx* cctx,
         for (seqNb = 0; seqNb < nbSequences - 1 ; seqNb++) {
             U32 const litLength = inSeqs[seqNb].litLength;
             U32 const matchLength = inSeqs[seqNb].matchLength;
-            U32 offBase;
-
-            if (!repcodeResolution) {
-                offBase = OFFSET_TO_OFFBASE(inSeqs[seqNb].offset);
-            } else {
-                U32 const ll0 = (litLength == 0);
-                offBase = ZSTD_finalizeOffBase(inSeqs[seqNb].offset, updatedRepcodes.rep, ll0);
-                ZSTD_updateRep(updatedRepcodes.rep, offBase, ll0);
-            }
+            U32 const ll0 = (litLength == 0);
+            U32 const offBase = ZSTD_finalizeOffBase(inSeqs[seqNb].offset, updatedRepcodes.rep, ll0);
 
             DEBUGLOG(6, "Storing sequence: (of: %u, ml: %u, ll: %u)", offBase, matchLength, litLength);
             ZSTD_storeSeqOnly(&cctx->seqStore, litLength, offBase, matchLength);
+            ZSTD_updateRep(updatedRepcodes.rep, offBase, ll0);
         }
     }
 
