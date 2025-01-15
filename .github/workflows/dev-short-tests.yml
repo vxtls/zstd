@@ -199,7 +199,9 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
       - name: Build with ${{matrix.name}}
-        run: ${{matrix.flags}} make zstd
+        run: |
+          sudo apt install liblzma-dev
+          ${{matrix.flags}} make zstd
 
 
   implicit-fall-through:
