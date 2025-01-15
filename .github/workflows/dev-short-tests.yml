@@ -89,6 +89,7 @@ jobs:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
     - name: cmake build and test
       run: |
+        sudo apt install liblzma-dev
         FUZZERTEST=-T1mn ZSTREAM_TESTTIME=-T1mn make cmakebuild V=1
 
   cpp-gnu90-c99-compatibility:
