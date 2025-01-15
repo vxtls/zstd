@@ -615,18 +615,6 @@ jobs:
       run: |
         make clangbuild
 
-  clang-pgo:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
-    - name: Build PGO Zstd with Clang
-      env:
-        CC: clang-14
-        LLVM_PROFDATA: llvm-profdata-14
-      run: |
-        make -C programs zstd-pgo
-        ./programs/zstd -b
-
   gcc-pgo:
     runs-on: ubuntu-latest
     steps:
@@ -635,6 +623,19 @@ jobs:
       env:
         CC: gcc
       run: |
+        make -C programs zstd-pgo
+        ./programs/zstd -b
+
+  clang-pgo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
+    - name: Build PGO Zstd with Clang
+      env:
+        CC: clang
+      run: |
+        sudo apt install -y llvm
+        llvm-profdata --version
         make -C programs zstd-pgo
         ./programs/zstd -b
 
