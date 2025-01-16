@@ -6687,6 +6687,7 @@ ZSTD_transferSequences_wBlockDelim(ZSTD_CCtx* cctx,
         ZSTD_storeSeq(&cctx->seqStore, litLength, ip, iend, offBase, matchLength);
         ip += matchLength + litLength;
     }
+    RETURN_ERROR_IF(idx == inSeqsSize, externalSequences_invalid, "Block delimiter not found.");
 
     /* If we skipped repcode search while parsing, we need to update repcodes now */
     assert(externalRepSearch != ZSTD_ps_auto);
