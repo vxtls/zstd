@@ -141,12 +141,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
-    - name: zlib wrapper test
+    - name: install valgrind
       run: |
         sudo apt-get -qqq update
         make valgrindinstall
-        make -C zlibWrapper test
-        make -C zlibWrapper test-valgrind
+    - name: zlib wrapper test
+      run: make -C zlibWrapper test
+    - name: zlib wrapper test under valgrind
+      run: make -C zlibWrapper test-valgrind
 
   lz4-threadpool-libs:
     runs-on: ubuntu-latest
