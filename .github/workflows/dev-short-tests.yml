@@ -144,11 +144,11 @@ jobs:
     - name: install valgrind
       run: |
         sudo apt-get -qqq update
-        make valgrindinstall
+        make valgrindinstall V=1
     - name: zlib wrapper test
-      run: make -C zlibWrapper test
+      run: make -C zlibWrapper test V=1
     - name: zlib wrapper test under valgrind
-      run: make -C zlibWrapper test-valgrind
+      run: make -C zlibWrapper test-valgrind V=1
 
   lz4-threadpool-libs:
     runs-on: ubuntu-latest
