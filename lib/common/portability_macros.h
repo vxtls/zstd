@@ -102,7 +102,9 @@
  */
 #if defined(__GNUC__)
 #  if defined(__linux__) || defined(__linux) || defined(__APPLE__) || defined(_WIN32)
-#    if ZSTD_MEMORY_SANITIZER || ZSTD_DATAFLOW_SANITIZER
+#    if ZSTD_MEMORY_SANITIZER
+#      define ZSTD_ASM_SUPPORTED 0
+#    elif ZSTD_DATAFLOW_SANITIZER
 #      define ZSTD_ASM_SUPPORTED 0
 #    else
 #      define ZSTD_ASM_SUPPORTED 1
