@@ -159,10 +159,15 @@ MEM_STATIC size_t BIT_initCStream(BIT_CStream_t* bitC,
     return 0;
 }
 
-FORCE_INLINE_TEMPLATE size_t BIT_getLowerBits(size_t bitContainer, U32 const nbBits)
+FORCE_INLINE_TEMPLATE size_t BIT_getLowerBits(BitContainerType bitContainer, U32 const nbBits)
 {
 #if defined(STATIC_BMI2) && STATIC_BMI2 == 1 && !defined(ZSTD_NO_INTRINSICS)
-    return  _bzhi_u64(bitContainer, nbBits);
+#  if (defined(__x86_64__) || defined(_M_X64)) && !defined(__ILP32__)
+    return _bzhi_u64(bitContainer, nbBits);
+#  else
+    DEBUG_STATIC_ASSERT(sizeof(bitContainer) == sizeof(U32));
+    return _bzhi_u32(bitContainer, nbBits);
+#  endif
 #else
     assert(nbBits < BIT_MASK_SIZE);
     return bitContainer & BIT_mask[nbBits];
