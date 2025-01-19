@@ -165,7 +165,7 @@ FORCE_INLINE_TEMPLATE size_t BIT_getLowerBits(BitContainerType bitContainer, U32
 #  if (defined(__x86_64__) || defined(_M_X64)) && !defined(__ILP32__)
     return _bzhi_u64(bitContainer, nbBits);
 #  else
-    DEBUG_STATIC_ASSERT(sizeof(size_t) == sizeof(U32));
+    DEBUG_STATIC_ASSERT(sizeof(bitContainer) == sizeof(U32));
     return _bzhi_u32(bitContainer, nbBits);
 #  endif
 #else
