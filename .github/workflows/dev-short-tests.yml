@@ -192,7 +192,7 @@ jobs:
       run: |
         sudo apt-get -qqq update
         make libc6install
-        CFLAGS="-Werror -m32 -mavx2" make -j all32
+        CPPFLAGS="-DSTATIC_BMI2=1" CFLAGS="-Werror -m32 -mavx2" make -j all32
 
 
   gcc-8-make:
