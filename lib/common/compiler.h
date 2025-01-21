@@ -321,6 +321,8 @@ MEM_STATIC int ZSTD_isPower2(size_t u) {
 #  define ZSTD_ALIGNED(a) __attribute__((aligned(a)))
 # elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) /* C11 */
 #  define ZSTD_ALIGNED(a) alignas(a)
+#elif defined(_MSC_VER)
+#  define ZSTD_ALIGNED(n) __declspec(align(n))
 # else
    /* this compiler will require its own alignment instruction */
 #  define ZSTD_ALIGNED(...)
