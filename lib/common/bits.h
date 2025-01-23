@@ -29,7 +29,7 @@ MEM_STATIC unsigned ZSTD_countTrailingZeros32(U32 val)
 {
     assert(val != 0);
 #   if defined(_MSC_VER)
-#       if STATIC_BMI2 == 1
+#       if STATIC_BMI2
             return (unsigned)_tzcnt_u32(val);
 #       else
             if (val != 0) {
@@ -70,7 +70,7 @@ MEM_STATIC unsigned ZSTD_countLeadingZeros32(U32 val)
 {
     assert(val != 0);
 #   if defined(_MSC_VER)
-#       if STATIC_BMI2 == 1
+#       if STATIC_BMI2
             return (unsigned)_lzcnt_u32(val);
 #       else
             if (val != 0) {
@@ -95,7 +95,7 @@ MEM_STATIC unsigned ZSTD_countTrailingZeros64(U64 val)
 {
     assert(val != 0);
 #   if defined(_MSC_VER) && defined(_WIN64)
-#       if STATIC_BMI2 == 1
+#       if STATIC_BMI2
             return (unsigned)_tzcnt_u64(val);
 #       else
             if (val != 0) {
@@ -128,7 +128,7 @@ MEM_STATIC unsigned ZSTD_countLeadingZeros64(U64 val)
 {
     assert(val != 0);
 #   if defined(_MSC_VER) && defined(_WIN64)
-#       if STATIC_BMI2 == 1
+#       if STATIC_BMI2
             return (unsigned)_lzcnt_u64(val);
 #       else
             if (val != 0) {
