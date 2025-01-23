@@ -74,7 +74,7 @@
 # define ZSTD_HIDE_ASM_FUNCTION(func)
 #endif
 
-/* Like DYNAMIC_BMI2 but for compile time determination of BMI2 support */
+/* Compile time determination of BMI2 support */
 #ifndef STATIC_BMI2
 #  if defined(_MSC_VER)
 #    ifdef __AVX2__  /* MSVC does not have a BMI2 specific flag, but every CPU that supports AVX2 also supports BMI2 */
