@@ -147,7 +147,7 @@ MEM_STATIC unsigned MEM_isLittleEndian(void)
     return 1;
 #elif defined(__clang__) && __BIG_ENDIAN__
     return 0;
-#elif defined(_MSC_VER) && (_M_AMD64 || _M_IX86)
+#elif defined(_MSC_VER) && (_M_X64 || _M_IX86)
     return 1;
 #elif defined(__DMC__) && defined(_M_IX86)
     return 1;
