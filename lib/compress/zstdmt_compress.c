@@ -1245,12 +1245,10 @@ size_t ZSTDMT_initCStream_internal(
 
     /* init */
     if (params.nbWorkers != mtctx->params.nbWorkers)
-        FORWARD_IF_ERROR( ZSTDMT_resize(mtctx, params.nbWorkers) , "");
+        FORWARD_IF_ERROR( ZSTDMT_resize(mtctx, (unsigned)params.nbWorkers) , "");
 
     if (params.jobSize != 0 && params.jobSize < ZSTDMT_JOBSIZE_MIN) params.jobSize = ZSTDMT_JOBSIZE_MIN;
     if (params.jobSize > (size_t)ZSTDMT_JOBSIZE_MAX) params.jobSize = (size_t)ZSTDMT_JOBSIZE_MAX;
-
-    DEBUGLOG(4, "ZSTDMT_initCStream_internal: %u workers", params.nbWorkers);
 
     if (mtctx->allJobsCompleted == 0) {   /* previous compression not correctly finished */
         ZSTDMT_waitForAllJobsCompleted(mtctx);
