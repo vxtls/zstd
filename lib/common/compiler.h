@@ -207,21 +207,6 @@
 #  pragma warning(disable : 4324)        /* disable: C4324: padded structure */
 #endif
 
-/* Like DYNAMIC_BMI2 but for compile time determination of BMI2 support */
-#ifndef STATIC_BMI2
-#  if defined(_MSC_VER)
-#    ifdef __AVX2__  /* MSVC does not have a BMI2 specific flag, but every CPU that supports AVX2 also supports BMI2 */
-#       define STATIC_BMI2 1
-#    endif
-#  elif defined(__BMI2__)
-#    define STATIC_BMI2 1
-#  endif
-#endif
-
-#ifndef STATIC_BMI2
-#  define STATIC_BMI2 0
-#endif
-
 /* compile time determination of SIMD support */
 #if !defined(ZSTD_NO_INTRINSICS)
 #  if defined(__AVX2__)
