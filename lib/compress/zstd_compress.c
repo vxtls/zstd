@@ -4960,7 +4960,7 @@ ZSTD_loadDictionaryContent(ZSTD_MatchState_t* ms,
     }
 
     /* If the dict is larger than we can reasonably index in our tables, only load the suffix. */
-    {   U32 maxDictSize = 2U << MIN(MAX(params->cParams.hashLog, params->cParams.chainLog), 30);
+    {   U32 maxDictSize = 1U << MIN(MAX(params->cParams.hashLog + 3, params->cParams.chainLog + 1), 31);
         if (srcSize > maxDictSize) {
             ip = iend - maxDictSize;
             src = ip;
