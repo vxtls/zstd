@@ -1258,15 +1258,14 @@ size_t ZSTDMT_initCStream_internal(
 
     mtctx->params = params;
     mtctx->frameContentSize = pledgedSrcSize;
+    ZSTD_freeCDict(mtctx->cdictLocal);
     if (dict) {
-        ZSTD_freeCDict(mtctx->cdictLocal);
         mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize,
                                                     ZSTD_dlm_byCopy, dictContentType, /* note : a loadPrefix becomes an internal CDict */
                                                     params.cParams, mtctx->cMem);
         mtctx->cdict = mtctx->cdictLocal;
         if (mtctx->cdictLocal == NULL) return ERROR(memory_allocation);
     } else {
-        ZSTD_freeCDict(mtctx->cdictLocal);
         mtctx->cdictLocal = NULL;
         mtctx->cdict = cdict;
     }
@@ -1401,7 +1400,7 @@ static size_t ZSTDMT_createCompressionJob(ZSTDMT_CCtx* mtctx, size_t srcSize, ZS
         mtctx->roundBuff.pos += srcSize;
         mtctx->inBuff.buffer = g_nullBuffer;
         mtctx->inBuff.filled = 0;
-        /* Set the prefix */
+        /* Set the prefix for next job */
         if (!endFrame) {
             size_t const newPrefixSize = MIN(srcSize, mtctx->targetPrefixSize);
             mtctx->inBuff.prefix.start = src + srcSize - newPrefixSize;
