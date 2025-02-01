@@ -64,7 +64,7 @@ size_t ZSTDMT_nextInputSizeHint(const ZSTDMT_CCtx* mtctx);
  *  even if they are not needed for the current compression.
  *  @return : 0, or an error code */
 size_t ZSTDMT_initCStream_internal(ZSTDMT_CCtx* mtctx,
-                    const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType,
+                    const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType, ZSTD_dictLoadMethod_e dictLoadMethod,
                     const ZSTD_CDict* cdict,
                     ZSTD_CCtx_params params, unsigned long long pledgedSrcSize);
 

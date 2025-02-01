@@ -74,7 +74,7 @@ ZSTD_ALLOW_POINTER_OVERFLOW_ATTR
 void ZSTD_insertDUBT1(const ZSTD_MatchState_t* ms,
                  U32 curr, const BYTE* inputEnd,
                  U32 nbCompares, U32 btLow,
-                 const ZSTD_dictMode_e dictMode)
+                 const ZSTD_DictMode_e dictMode)
 {
     const ZSTD_compressionParameters* const cParams = &ms->cParams;
     U32* const bt = ms->chainTable;
@@ -168,7 +168,7 @@ size_t ZSTD_DUBT_findBetterDictMatch (
         size_t bestLength,
         U32 nbCompares,
         U32 const mls,
-        const ZSTD_dictMode_e dictMode)
+        const ZSTD_DictMode_e dictMode)
 {
     const ZSTD_MatchState_t * const dms = ms->dictMatchState;
     const ZSTD_compressionParameters* const dmsCParams = &dms->cParams;
@@ -244,7 +244,7 @@ size_t ZSTD_DUBT_findBestMatch(ZSTD_MatchState_t* ms,
                         const BYTE* const ip, const BYTE* const iend,
                         size_t* offBasePtr,
                         U32 const mls,
-                        const ZSTD_dictMode_e dictMode)
+                        const ZSTD_DictMode_e dictMode)
 {
     const ZSTD_compressionParameters* const cParams = &ms->cParams;
     U32*   const hashTable = ms->hashTable;
@@ -396,7 +396,7 @@ size_t ZSTD_BtFindBestMatch( ZSTD_MatchState_t* ms,
                 const BYTE* const ip, const BYTE* const iLimit,
                       size_t* offBasePtr,
                 const U32 mls /* template */,
-                const ZSTD_dictMode_e dictMode)
+                const ZSTD_DictMode_e dictMode)
 {
     DEBUGLOG(7, "ZSTD_BtFindBestMatch");
     if (ip < ms->window.base + ms->nextToUpdate) return 0;   /* skipped area */
@@ -668,7 +668,7 @@ size_t ZSTD_HcFindBestMatch(
                         ZSTD_MatchState_t* ms,
                         const BYTE* const ip, const BYTE* const iLimit,
                         size_t* offsetPtr,
-                        const U32 mls, const ZSTD_dictMode_e dictMode)
+                        const U32 mls, const ZSTD_DictMode_e dictMode)
 {
     const ZSTD_compressionParameters* const cParams = &ms->cParams;
     U32* const chainTable = ms->chainTable;
@@ -1142,7 +1142,7 @@ size_t ZSTD_RowFindBestMatch(
                         ZSTD_MatchState_t* ms,
                         const BYTE* const ip, const BYTE* const iLimit,
                         size_t* offsetPtr,
-                        const U32 mls, const ZSTD_dictMode_e dictMode,
+                        const U32 mls, const ZSTD_DictMode_e dictMode,
                         const U32 rowLog)
 {
     U32* const hashTable = ms->hashTable;
@@ -1492,7 +1492,7 @@ FORCE_INLINE_TEMPLATE size_t ZSTD_searchMax(
     U32 const mls,
     U32 const rowLog,
     searchMethod_e const searchMethod,
-    ZSTD_dictMode_e const dictMode)
+    ZSTD_DictMode_e const dictMode)
 {
     if (dictMode == ZSTD_noDict) {
         ZSTD_SWITCH_SEARCH_METHOD(noDict)
@@ -1518,7 +1518,7 @@ size_t ZSTD_compressBlock_lazy_generic(
                         U32 rep[ZSTD_REP_NUM],
                         const void* src, size_t srcSize,
                         const searchMethod_e searchMethod, const U32 depth,
-                        ZSTD_dictMode_e const dictMode)
+                        ZSTD_DictMode_e const dictMode)
 {
     const BYTE* const istart = (const BYTE*)src;
     const BYTE* ip = istart;

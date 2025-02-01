@@ -1354,10 +1354,12 @@ size_t ZSTD_CCtx_refPrefix_advanced(
     RETURN_ERROR_IF(cctx->streamStage != zcss_init, stage_wrong,
                     "Can't ref a prefix when ctx not in init stage.");
     ZSTD_clearAllDicts(cctx);
-    if (prefix != NULL && prefixSize > 0) {
+    if (prefixSize > 0) {
+        RETURN_ERROR_IF(prefix == NULL, dictionary_wrong, "Invalid prefix pointer");
         cctx->prefixDict.dict = prefix;
         cctx->prefixDict.dictSize = prefixSize;
         cctx->prefixDict.dictContentType = dictContentType;
+        cctx->prefixDict.loadMethod = ZSTD_dlm_byRef;
     }
     return 0;
 }
@@ -3066,7 +3068,7 @@ ZSTD_entropyCompressSeqStore(
 /* ZSTD_selectBlockCompressor() :
  * Not static, but internal use only (used by long distance matcher)
  * assumption : strat is a valid strategy */
-ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_ParamSwitch_e useRowMatchFinder, ZSTD_dictMode_e dictMode)
+ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_ParamSwitch_e useRowMatchFinder, ZSTD_DictMode_e dictMode)
 {
     static const ZSTD_BlockCompressor_f blockCompressor[4][ZSTD_STRATEGY_MAX+1] = {
         { ZSTD_compressBlock_fast  /* default for 0 */,
@@ -3298,7 +3300,7 @@ static size_t ZSTD_buildSeqStore(ZSTD_CCtx* zc, const void* src, size_t srcSize)
     }
 
     /* select and store sequences */
-    {   ZSTD_dictMode_e const dictMode = ZSTD_matchState_dictMode(ms);
+    {   ZSTD_DictMode_e const dictMode = ZSTD_matchState_dictMode(ms);
         size_t lastLLSize;
         {   int i;
             for (i = 0; i < ZSTD_REP_NUM; ++i)
@@ -6351,7 +6353,7 @@ static size_t ZSTD_CCtx_init_compressStream2(ZSTD_CCtx* cctx,
                                              size_t inSize)
 {
     ZSTD_CCtx_params params = cctx->requestedParams;
-    ZSTD_prefixDict const prefixDict = cctx->prefixDict;
+    ZSTD_PrefixDict const prefixDict = cctx->prefixDict;
     FORWARD_IF_ERROR( ZSTD_initLocalDict(cctx) , ""); /* Init the local dict if present. */
     ZSTD_memset(&cctx->prefixDict, 0, sizeof(cctx->prefixDict));   /* single usage */
     assert(prefixDict.dict==NULL || cctx->cdict==NULL);    /* only one can be set */
@@ -6407,7 +6409,7 @@ static size_t ZSTD_CCtx_init_compressStream2(ZSTD_CCtx* cctx,
         DEBUGLOG(4, "call ZSTDMT_initCStream_internal as nbWorkers=%u", params.nbWorkers);
         FORWARD_IF_ERROR( ZSTDMT_initCStream_internal(
                     cctx->mtctx,
-                    prefixDict.dict, prefixDict.dictSize, prefixDict.dictContentType,
+                    prefixDict.dict, prefixDict.dictSize, prefixDict.dictContentType, prefixDict.loadMethod,
                     cctx->cdict, params, cctx->pledgedSrcSizePlusOne-1) , "");
         cctx->dictID = cctx->cdict ? cctx->cdict->dictID : 0;
         cctx->dictContentSize = cctx->cdict ? cctx->cdict->dictContentSize : prefixDict.dictSize;

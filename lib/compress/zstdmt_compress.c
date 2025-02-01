@@ -1232,7 +1232,7 @@ static size_t ZSTDMT_computeOverlapSize(const ZSTD_CCtx_params* params)
 
 size_t ZSTDMT_initCStream_internal(
         ZSTDMT_CCtx* mtctx,
-        const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType,
+        const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType, ZSTD_dictLoadMethod_e dictLoadMethod,
         const ZSTD_CDict* cdict, ZSTD_CCtx_params params,
         unsigned long long pledgedSrcSize)
 {
@@ -1261,7 +1261,7 @@ size_t ZSTDMT_initCStream_internal(
     ZSTD_freeCDict(mtctx->cdictLocal);
     if (dict) {
         mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize,
-                                                    ZSTD_dlm_byCopy, dictContentType, /* note : a loadPrefix becomes an internal CDict */
+                                                    dictLoadMethod, dictContentType, /* note : a loadPrefix becomes an internal CDict */
                                                     params.cParams, mtctx->cMem);
         mtctx->cdict = mtctx->cdictLocal;
         if (mtctx->cdictLocal == NULL) return ERROR(memory_allocation);
