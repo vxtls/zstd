@@ -1323,6 +1323,7 @@ size_t ZSTDMT_initCStream_internal(
     /* update dictionary */
     ZSTD_freeCDict(mtctx->cdictLocal);
     mtctx->cdictLocal = NULL;
+    mtctx->cdict = NULL;
     if (dict) {
         if (dictContentType == ZSTD_dct_rawContent) {
             mtctx->inBuff.prefix.start = (const BYTE*)dict;
