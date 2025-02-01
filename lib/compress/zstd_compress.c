@@ -4900,7 +4900,7 @@ size_t ZSTD_compressBlock(ZSTD_CCtx* cctx, void* dst, size_t dstCapacity, const 
 /*! ZSTD_loadDictionaryContent() :
  *  @return : 0, or an error code
  */
-static size_t 
+static size_t
 ZSTD_loadDictionaryContent(ZSTD_MatchState_t* ms,
                         ldmState_t* ls,
                         ZSTD_cwksp* ws,
@@ -5603,7 +5603,7 @@ static size_t ZSTD_initCDict_internal(
     return 0;
 }
 
-static ZSTD_CDict* 
+static ZSTD_CDict*
 ZSTD_createCDict_advanced_internal(size_t dictSize,
                                 ZSTD_dictLoadMethod_e dictLoadMethod,
                                 ZSTD_compressionParameters cParams,
