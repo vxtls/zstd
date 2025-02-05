@@ -7191,7 +7191,7 @@ static size_t convertSequences_noRepcodes(
     /* Process 2 sequences per loop iteration */
     for (; i + 1 < nbSequences; i += 2) {
         /* Load 2 ZSTD_Sequence (32 bytes) */
-        __m256i vin  = _mm256_loadu_si256((__m256i const*)&inSeqs[i]);
+        __m256i vin  = _mm256_loadu_si256((const __m256i*)(const void*)&inSeqs[i]);
 
         /* Add {2, 0, -3, 0} in each 128-bit half */
         __m256i vadd = _mm256_add_epi32(vin, addition);
