@@ -362,6 +362,8 @@ jobs:
           - generator: "MinGW Makefiles"
           - generator: "Visual Studio 17 2022"
             flags: "-T ClangCL"
+          - generator: "Visual Studio 17 2022"
+            flags: "-T ClangCL -A x64 -DCMAKE_C_FLAGS=/arch:AVX2"
     runs-on: windows-2022
     steps:
     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
