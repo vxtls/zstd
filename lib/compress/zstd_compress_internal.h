@@ -12,8 +12,8 @@
  * that shall **only** be used by modules within lib/compress.
  */
 
-#ifndef ZSTD_COMPRESS_INTERNAL_H
-#define ZSTD_COMPRESS_INTERNAL_H
+#ifndef ZSTD_COMPRESS_H
+#define ZSTD_COMPRESS_H
 
 /*-*************************************
 *  Dependencies
@@ -21,10 +21,10 @@
 #include "../common/zstd_internal.h"
 #include "zstd_cwksp.h"
 #ifdef ZSTD_MULTITHREAD
-#  include "zstdmt_compress.h" /* ZSTDMT_CCtx */
+#  include "zstdmt_compress.h"
 #endif
 #include "../common/bits.h" /* ZSTD_highbit32, ZSTD_NbCommonBytes */
-#include "zstd_preSplit.h"  /* ZSTD_SLIPBLOCK_WORKSPACESIZE */
+#include "zstd_preSplit.h" /* ZSTD_SLIPBLOCK_WORKSPACESIZE */
 
 /*-*************************************
 *  Constants
@@ -46,12 +46,11 @@
 typedef enum { ZSTDcs_created=0, ZSTDcs_init, ZSTDcs_ongoing, ZSTDcs_ending } ZSTD_compressionStage_e;
 typedef enum { zcss_init=0, zcss_load, zcss_flush } ZSTD_cStreamStage;
 
-typedef struct {
+typedef struct ZSTD_prefixDict_s {
     const void* dict;
     size_t dictSize;
     ZSTD_dictContentType_e dictContentType;
-    ZSTD_dictLoadMethod_e loadMethod;
-} ZSTD_PrefixDict;
+} ZSTD_prefixDict;
 
 typedef struct {
     void* dictBuffer;
@@ -468,7 +467,7 @@ typedef struct {
 
     U32 partitions[ZSTD_MAX_NB_BLOCK_SPLITS];
     ZSTD_entropyCTablesMetadata_t entropyMetadata;
-} ZSTD_BlockSplitCtx;
+} ZSTD_blockSplitCtx;
 
 struct ZSTD_CCtx_s {
     ZSTD_compressionStage_e stage;
@@ -526,7 +525,7 @@ struct ZSTD_CCtx_s {
     /* Dictionary */
     ZSTD_localDict localDict;
     const ZSTD_CDict* cdict;
-    ZSTD_PrefixDict prefixDict;   /* single-usage dictionary */
+    ZSTD_prefixDict prefixDict;   /* single-usage dictionary */
 
     /* Multi-threading */
 #ifdef ZSTD_MULTITHREAD
@@ -539,7 +538,7 @@ struct ZSTD_CCtx_s {
 #endif
 
     /* Workspace for block splitter */
-    ZSTD_BlockSplitCtx blockSplitCtx;
+    ZSTD_blockSplitCtx blockSplitCtx;
 
     /* Buffer for output from external sequence producer */
     ZSTD_Sequence* extSeqBuf;
@@ -554,7 +553,7 @@ typedef enum {
     ZSTD_extDict = 1,
     ZSTD_dictMatchState = 2,
     ZSTD_dedicatedDictSearch = 3
-} ZSTD_DictMode_e;
+} ZSTD_dictMode_e;
 
 typedef enum {
     ZSTD_cpm_noAttachDict = 0,  /* Compression with ZSTD_noDict or ZSTD_extDict.
@@ -579,7 +578,7 @@ typedef enum {
 typedef size_t (*ZSTD_BlockCompressor_f) (
         ZSTD_MatchState_t* bs, SeqStore_t* seqStore, U32 rep[ZSTD_REP_NUM],
         void const* src, size_t srcSize);
-ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_ParamSwitch_e rowMatchfinderMode, ZSTD_DictMode_e dictMode);
+ZSTD_BlockCompressor_f ZSTD_selectBlockCompressor(ZSTD_strategy strat, ZSTD_ParamSwitch_e rowMatchfinderMode, ZSTD_dictMode_e dictMode);
 
 
 MEM_STATIC U32 ZSTD_LLcode(U32 litLength)
@@ -1069,7 +1068,7 @@ MEM_STATIC U32 ZSTD_window_hasExtDict(ZSTD_window_t const window)
  * Inspects the provided matchState and figures out what dictMode should be
  * passed to the compressor.
  */
-MEM_STATIC ZSTD_DictMode_e ZSTD_matchState_dictMode(const ZSTD_MatchState_t *ms)
+MEM_STATIC ZSTD_dictMode_e ZSTD_matchState_dictMode(const ZSTD_MatchState_t *ms)
 {
     return ZSTD_window_hasExtDict(ms->window) ?
         ZSTD_extDict :
@@ -1634,4 +1633,4 @@ size_t ZSTD_compressEnd_public(ZSTD_CCtx* cctx,
 size_t ZSTD_compressBlock_deprecated(ZSTD_CCtx* cctx, void* dst, size_t dstCapacity, const void* src, size_t srcSize);
 
 
-#endif /* ZSTD_COMPRESS_INTERNAL_H */
+#endif /* ZSTD_COMPRESS_H */

@@ -1248,7 +1248,7 @@ static size_t ZSTDMT_computeOverlapSize(const ZSTD_CCtx_params* params)
 
 size_t ZSTDMT_initCStream_internal(
         ZSTDMT_CCtx* mtctx,
-        const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType, ZSTD_dictLoadMethod_e dictLoadMethod,
+        const void* dict, size_t dictSize, ZSTD_dictContentType_e dictContentType,
         const ZSTD_CDict* cdict, ZSTD_CCtx_params params,
         unsigned long long pledgedSrcSize)
 {
@@ -1274,6 +1274,18 @@ size_t ZSTDMT_initCStream_internal(
 
     mtctx->params = params;
     mtctx->frameContentSize = pledgedSrcSize;
+    ZSTD_freeCDict(mtctx->cdictLocal);
+    if (dict) {
+        mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize,
+                                                    ZSTD_dlm_byCopy, dictContentType, /* note : a loadPrefix becomes an internal CDict */
+                                                    params.cParams, mtctx->cMem);
+        mtctx->cdict = mtctx->cdictLocal;
+        if (mtctx->cdictLocal == NULL) return ERROR(memory_allocation);
+    } else {
+        mtctx->cdictLocal = NULL;
+        mtctx->cdict = cdict;
+    }
+
     mtctx->targetPrefixSize = ZSTDMT_computeOverlapSize(&params);
     DEBUGLOG(4, "overlapLog=%i => %u KB", params.overlapLog, (U32)(mtctx->targetPrefixSize>>10));
     mtctx->targetSectionSize = params.jobSize;
@@ -1347,7 +1359,7 @@ size_t ZSTDMT_initCStream_internal(
         } else {
             /* note : a loadPrefix becomes an internal CDict */
             mtctx->cdictLocal = ZSTD_createCDict_advanced(dict, dictSize,
-                                                        dictLoadMethod, dictContentType,
+                                                        ZSTD_dlm_byRef, dictContentType,
                                                         params.cParams, mtctx->cMem);
             mtctx->cdict = mtctx->cdictLocal;
             if (mtctx->cdictLocal == NULL) return ERROR(memory_allocation);
