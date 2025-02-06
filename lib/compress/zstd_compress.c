@@ -7191,7 +7191,7 @@ static size_t convertSequences_noRepcodes(
     /* Process 2 sequences per loop iteration */
     for (; i + 1 < nbSequences; i += 2) {
         /* Load 2 ZSTD_Sequence (32 bytes) */
-        __m256i vin  = _mm256_loadu_si256((__m256i const*)&inSeqs[i]);
+        __m256i vin  = _mm256_loadu_si256((const __m256i*)(const void*)&inSeqs[i]);
 
         /* Add {2, 0, -3, 0} in each 128-bit half */
         __m256i vadd = _mm256_add_epi32(vin, addition);
@@ -7218,7 +7218,7 @@ static size_t convertSequences_noRepcodes(
          */
 
         /* Store only the lower 16 bytes => 2 SeqDef (8 bytes each) */
-        _mm_storeu_si128((__m128i *)&dstSeqs[i], _mm256_castsi256_si128(vperm));
+        _mm_storeu_si128((__m128i *)(void*)&dstSeqs[i], _mm256_castsi256_si128(vperm));
         /*
          * This writes out 16 bytes total:
          *   - offset 0..7  => seq0 (offBase, litLength, mlBase)
@@ -7400,7 +7400,7 @@ BlockSummary ZSTD_get1BlockSummary(const ZSTD_Sequence* seqs, size_t nbSeqs)
     /* Process 2 structs (32 bytes) at a time */
     for (i = 0; i + 2 <= nbSeqs; i += 2) {
         /* Load two consecutive ZSTD_Sequence (8×4 = 32 bytes) */
-        __m256i data     = _mm256_loadu_si256((const __m256i*)&seqs[i]);
+        __m256i data     = _mm256_loadu_si256((const __m256i*)(const void*)&seqs[i]);
         /* check end of block signal */
         __m256i cmp      = _mm256_cmpeq_epi32(data, zeroVec);
         int cmp_res      = _mm256_movemask_epi8(cmp);
