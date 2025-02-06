@@ -7218,7 +7218,7 @@ static size_t convertSequences_noRepcodes(
          */
 
         /* Store only the lower 16 bytes => 2 SeqDef (8 bytes each) */
-        _mm_storeu_si128((__m128i *)&dstSeqs[i], _mm256_castsi256_si128(vperm));
+        _mm_storeu_si128((__m128i *)(void*)&dstSeqs[i], _mm256_castsi256_si128(vperm));
         /*
          * This writes out 16 bytes total:
          *   - offset 0..7  => seq0 (offBase, litLength, mlBase)
