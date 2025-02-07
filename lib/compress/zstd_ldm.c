@@ -139,15 +139,19 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
     ZSTD_STATIC_ASSERT(LDM_BUCKET_SIZE_LOG <= ZSTD_LDM_BUCKETSIZELOG_MAX);
     DEBUGLOG(4, "ZSTD_ldm_adjustParameters");
     if (!params->bucketSizeLog) params->bucketSizeLog = LDM_BUCKET_SIZE_LOG;
-    if (!params->minMatchLength) params->minMatchLength = LDM_MIN_MATCH_LENGTH;
+    if (params->hashRateLog == 0) {
+        assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
+        /* mapping: strat1 -> rate8 ... strat9 -> rate4*/
+        params->hashRateLog = 9 - ((cParams->strategy+1)/2);
+    }
     if (params->hashLog == 0) {
-        params->hashLog = MAX(ZSTD_HASHLOG_MIN, params->windowLog - LDM_HASH_RLOG);
+        params->hashLog = MAX(ZSTD_HASHLOG_MIN, params->windowLog - params->hashRateLog);
         assert(params->hashLog <= ZSTD_HASHLOG_MAX);
     }
-    if (params->hashRateLog == 0) {
-        params->hashRateLog = params->windowLog < params->hashLog
-                                   ? 0
-                                   : params->windowLog - params->hashLog;
+    if (params->minMatchLength == 0) {
+        params->minMatchLength = (params->hashRateLog < 6) ?
+                                LDM_MIN_MATCH_LENGTH :
+                                LDM_MIN_MATCH_LENGTH * 2;
     }
     params->bucketSizeLog = MIN(params->bucketSizeLog, params->hashLog);
 }
