@@ -464,7 +464,7 @@ The list of available _options_:
     Larger values will improve compression speed. Deviating far from the
     default value will likely result in a decrease in compression ratio.
 
-    The default value varies between 4 and 8, depending on `strategy`.
+    The default value varies between 4 and 7, depending on `strategy`.
 
 - `ldmHashLog`=_lhlog_, `lhlog`=_lhlog_:
     Specify the maximum size for a hash table used for long distance matching.

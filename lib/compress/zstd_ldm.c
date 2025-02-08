@@ -141,7 +141,7 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
     if (params->hashRateLog == 0) {
         assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
         /* mapping: strat1 -> rate8 ... strat9 -> rate4*/
-        params->hashRateLog = 9 - ((cParams->strategy+1)/2);
+        params->hashRateLog = 7 - (cParams->strategy/3);
     }
     if (params->hashLog == 0) {
         params->hashLog = MAX(ZSTD_HASHLOG_MIN, params->windowLog - params->hashRateLog);
