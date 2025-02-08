@@ -147,10 +147,8 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
         params->hashLog = MIN(MAX(ZSTD_HASHLOG_MIN, params->windowLog - params->hashRateLog), ZSTD_HASHLOG_MAX);
     }
     if (params->minMatchLength == 0) {
-        params->minMatchLength = (params->hashRateLog < 6) ?
-                                LDM_MIN_MATCH_LENGTH :
-                                LDM_MIN_MATCH_LENGTH * 2;
-        if (cParams->strategy >= ZSTD_btultra2)
+        params->minMatchLength = LDM_MIN_MATCH_LENGTH;
+        if (cParams->strategy >= ZSTD_btultra)
             params->minMatchLength /= 2;
     }
     if (params->bucketSizeLog==0) {
