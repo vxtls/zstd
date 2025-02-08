@@ -16,7 +16,7 @@
 #include "zstd_double_fast.h"   /* ZSTD_fillDoubleHashTable() */
 #include "zstd_ldm_geartab.h"
 
-#define LDM_BUCKET_SIZE_LOG 3
+#define LDM_BUCKET_SIZE_LOG 4
 #define LDM_MIN_MATCH_LENGTH 64
 #define LDM_HASH_RLOG 7
 
@@ -138,7 +138,6 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
     params->windowLog = cParams->windowLog;
     ZSTD_STATIC_ASSERT(LDM_BUCKET_SIZE_LOG <= ZSTD_LDM_BUCKETSIZELOG_MAX);
     DEBUGLOG(4, "ZSTD_ldm_adjustParameters");
-    if (!params->bucketSizeLog) params->bucketSizeLog = LDM_BUCKET_SIZE_LOG;
     if (params->hashRateLog == 0) {
         assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
         /* mapping: strat1 -> rate8 ... strat9 -> rate4*/
@@ -152,6 +151,15 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
         params->minMatchLength = (params->hashRateLog < 6) ?
                                 LDM_MIN_MATCH_LENGTH :
                                 LDM_MIN_MATCH_LENGTH * 2;
+        if (cParams->strategy >= ZSTD_btultra2)
+            params->minMatchLength /= 2;
+    }
+    if (params->bucketSizeLog==0) {
+        params->bucketSizeLog = LDM_BUCKET_SIZE_LOG;
+        if (cParams->strategy > ZSTD_lazy) {
+            params->bucketSizeLog += (U32)cParams->strategy - (U32)ZSTD_lazy;
+        }
+        params->bucketSizeLog = MIN(params->bucketSizeLog, ZSTD_LDM_BUCKETSIZELOG_MAX);
     }
     params->bucketSizeLog = MIN(params->bucketSizeLog, params->hashLog);
 }
