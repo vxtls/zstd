@@ -144,8 +144,7 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
         params->hashRateLog = 7 - (cParams->strategy/3);
     }
     if (params->hashLog == 0) {
-        params->hashLog = MAX(ZSTD_HASHLOG_MIN, params->windowLog - params->hashRateLog);
-        assert(params->hashLog <= ZSTD_HASHLOG_MAX);
+        params->hashLog = MIN(MAX(ZSTD_HASHLOG_MIN, params->windowLog - params->hashRateLog), ZSTD_HASHLOG_MAX);
     }
     if (params->minMatchLength == 0) {
         params->minMatchLength = (params->hashRateLog < 6) ?
