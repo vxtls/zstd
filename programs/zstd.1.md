@@ -455,6 +455,17 @@ The list of available _options_:
     Value 0 is special and means "default": _ovlog_ is automatically determined by `zstd`.
     In which case, _ovlog_ will range from 6 to 9, depending on selected _strat_.
 
+- `ldmHashRateLog`=_lhrlog_, `lhrlog`=_lhrlog_:
+    Specify the frequency of inserting entries into the long distance matching
+    hash table.
+
+    This option is ignored unless long distance matching is enabled.
+
+    Larger values will improve compression speed. Deviating far from the
+    default value will likely result in a decrease in compression ratio.
+
+    The default value varies between 4 and 8, depending on `strategy`.
+
 - `ldmHashLog`=_lhlog_, `lhlog`=_lhlog_:
     Specify the maximum size for a hash table used for long distance matching.
 
@@ -463,7 +474,7 @@ The list of available _options_:
     Bigger hash tables usually improve compression ratio at the expense of more
     memory during compression and a decrease in compression speed.
 
-    The minimum _lhlog_ is 6 and the maximum is 30 (default: 20).
+    The minimum _lhlog_ is 6 and the maximum is 30 (default: `windowLog - ldmHashRateLog`).
 
 - `ldmMinMatch`=_lmml_, `lmml`=_lmml_:
     Specify the minimum searched length of a match for long distance matching.
@@ -472,7 +483,7 @@ The list of available _options_:
 
     Larger/very small values usually decrease compression ratio.
 
-    The minimum _lmml_ is 4 and the maximum is 4096 (default: 64).
+    The minimum _lmml_ is 4 and the maximum is 4096 (default: 32 to 128, depending on `strategy`).
 
 - `ldmBucketSizeLog`=_lblog_, `lblog`=_lblog_:
     Specify the size of each bucket for the hash table used for long distance
@@ -483,18 +494,8 @@ The list of available _options_:
     Larger bucket sizes improve collision resolution but decrease compression
     speed.
 
-    The minimum _lblog_ is 1 and the maximum is 8 (default: 3).
+    The minimum _lblog_ is 1 and the maximum is 8 (default: 4 to 8, depending on `strategy`).
 
-- `ldmHashRateLog`=_lhrlog_, `lhrlog`=_lhrlog_:
-    Specify the frequency of inserting entries into the long distance matching
-    hash table.
-
-    This option is ignored unless long distance matching is enabled.
-
-    Larger values will improve compression speed. Deviating far from the
-    default value will likely result in a decrease in compression ratio.
-
-    The default value is `wlog - lhlog`.
 
 ### Example
 The following parameters sets advanced compression options to something
