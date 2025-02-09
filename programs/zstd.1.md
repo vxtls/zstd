@@ -483,7 +483,7 @@ The list of available _options_:
 
     Larger/very small values usually decrease compression ratio.
 
-    The minimum _lmml_ is 4 and the maximum is 4096 (default: 32 to 128, depending on `strategy`).
+    The minimum _lmml_ is 4 and the maximum is 4096 (default: 32 to 64, depending on `strategy`).
 
 - `ldmBucketSizeLog`=_lblog_, `lblog`=_lblog_:
     Specify the size of each bucket for the hash table used for long distance
