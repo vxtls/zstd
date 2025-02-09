@@ -639,6 +639,22 @@ static unsigned parseCompressionParameters(const char* stringPtr, ZSTD_compressi
     return 1;
 }
 
+static void setMaxCompression(ZSTD_compressionParameters* params)
+{
+    params->windowLog = ZSTD_WINDOWLOG_MAX;
+    params->chainLog = ZSTD_CHAINLOG_MAX;
+    params->hashLog = ZSTD_HASHLOG_MAX;
+    params->searchLog = ZSTD_SEARCHLOG_MAX;
+    params->minMatch = ZSTD_MINMATCH_MIN;
+    params->targetLength = ZSTD_TARGETLENGTH_MAX;
+    params->strategy = ZSTD_STRATEGY_MAX;
+    g_overlapLog = ZSTD_OVERLAPLOG_MAX;
+    g_ldmHashLog = ZSTD_LDM_HASHLOG_MAX;
+    g_ldmHashRateLog = 0; /* automatically derived */
+    g_ldmMinMatch = 32; /* heuristic */
+    g_ldmBucketSizeLog = ZSTD_LDM_BUCKETSIZELOG_MAX;
+}
+
 static void printVersion(void)
 {
     if (g_displayLevel < DISPLAY_LEVEL_DEFAULT) {
@@ -957,6 +973,7 @@ int main(int argCount, const char* argv[])
                 if (!strcmp(argument, "--quiet")) { g_displayLevel--; continue; }
                 if (!strcmp(argument, "--stdout")) { forceStdout=1; outFileName=stdoutmark; continue; }
                 if (!strcmp(argument, "--ultra")) { ultra=1; continue; }
+                if (!strcmp(argument, "--max")) { ultra=1; ldmFlag = 1; setMaxCompression(&compressionParams); continue; }
                 if (!strcmp(argument, "--check")) { FIO_setChecksumFlag(prefs, 2); continue; }
                 if (!strcmp(argument, "--no-check")) { FIO_setChecksumFlag(prefs, 0); continue; }
                 if (!strcmp(argument, "--sparse")) { FIO_setSparseWrite(prefs, 2); continue; }
