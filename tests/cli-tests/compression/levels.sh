@@ -6,7 +6,10 @@ set -v
 datagen > file
 
 # Retrieve the program's version information
+# Note: command echoing differs between macos and linux, so it's disabled below
+set +v
 version_info=$(zstd -V)
+set -v
 
 # Compress with various levels and ensure that their sizes are ordered
 zstd --fast=10 file -o file-f10.zst -q
