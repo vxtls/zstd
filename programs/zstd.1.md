@@ -163,8 +163,8 @@ the last one takes effect.
     `--memory=windowSize` needs to be passed to the decompressor.
 * `--max`:
     set advanced parameters to maximum compression.
-    warning: this setting uses a lot of resources and is very slow.
-    note that the amount of resource required is typically too large for 32-bit.
+    warning: this setting is very slow and uses a lot of resources.
+    It's inappropriate for 32-bit mode and therefore disabled in this mode.
 * `-D DICT`:
     use `DICT` as Dictionary to compress or decompress FILE(s)
 * `--patch-from FILE`:

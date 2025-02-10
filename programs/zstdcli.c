@@ -810,22 +810,22 @@ static unsigned default_nbThreads(void) {
             CLEAN_RETURN(1);      \
 }   }   }
 
-#define NEXT_UINT32(val32) {      \
-    const char* __nb;             \
-    NEXT_FIELD(__nb);             \
+#define NEXT_UINT32(val32) {        \
+    const char* __nb;               \
+    NEXT_FIELD(__nb);               \
     val32 = readU32FromChar(&__nb); \
-    if(*__nb != 0) {         \
+    if(*__nb != 0) {                \
         errorOut("error: only numeric values with optional suffixes K, KB, KiB, M, MB, MiB are allowed"); \
-    }                             \
+    }                               \
 }
 
-#define NEXT_TSIZE(valTsize) {      \
-    const char* __nb;             \
-    NEXT_FIELD(__nb);             \
+#define NEXT_TSIZE(valTsize) {           \
+    const char* __nb;                    \
+    NEXT_FIELD(__nb);                    \
     valTsize = readSizeTFromChar(&__nb); \
-    if(*__nb != 0) {         \
+    if(*__nb != 0) {                     \
         errorOut("error: only numeric values with optional suffixes K, KB, KiB, M, MB, MiB are allowed"); \
-    }                             \
+    }                                    \
 }
 
 typedef enum { zom_compress, zom_decompress, zom_test, zom_bench, zom_train, zom_list } zstd_operation_mode;
@@ -973,7 +973,6 @@ int main(int argCount, const char* argv[])
                 if (!strcmp(argument, "--quiet")) { g_displayLevel--; continue; }
                 if (!strcmp(argument, "--stdout")) { forceStdout=1; outFileName=stdoutmark; continue; }
                 if (!strcmp(argument, "--ultra")) { ultra=1; continue; }
-                if (!strcmp(argument, "--max")) { ultra=1; ldmFlag = 1; setMaxCompression(&compressionParams); continue; }
                 if (!strcmp(argument, "--check")) { FIO_setChecksumFlag(prefs, 2); continue; }
                 if (!strcmp(argument, "--no-check")) { FIO_setChecksumFlag(prefs, 0); continue; }
                 if (!strcmp(argument, "--sparse")) { FIO_setSparseWrite(prefs, 2); continue; }
@@ -1023,6 +1022,16 @@ int main(int argCount, const char* argv[])
                 if (!strcmp(argument, "--fake-stdout-is-console")) { UTIL_fakeStdoutIsConsole(); continue; }
                 if (!strcmp(argument, "--fake-stderr-is-console")) { UTIL_fakeStderrIsConsole(); continue; }
                 if (!strcmp(argument, "--trace-file-stat")) { UTIL_traceFileStat(); continue; }
+
+                if (!strcmp(argument, "--max")) {
+                    if (sizeof(void*)==4) {
+                        DISPLAYLEVEL(2, "--max is incompatible with 32-bit mode \n");
+                        badUsage(programName, originalArgument);
+                        CLEAN_RETURN(1);
+                    }
+                    ultra=1; ldmFlag = 1; setMaxCompression(&compressionParams);
+                    continue;
+                }
 
                 /* long commands with arguments */
 #ifndef ZSTD_NODICT
