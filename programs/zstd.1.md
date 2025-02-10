@@ -164,6 +164,7 @@ the last one takes effect.
 * `--max`:
     set advanced parameters to maximum compression.
     warning: this setting uses a lot of resources and is very slow.
+    note that the amount of resource required is typically too large for 32-bit.
 * `-D DICT`:
     use `DICT` as Dictionary to compress or decompress FILE(s)
 * `--patch-from FILE`:
