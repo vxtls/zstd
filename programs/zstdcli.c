@@ -651,7 +651,7 @@ static void setMaxCompression(ZSTD_compressionParameters* params)
     g_overlapLog = ZSTD_OVERLAPLOG_MAX;
     g_ldmHashLog = ZSTD_LDM_HASHLOG_MAX;
     g_ldmHashRateLog = 0; /* automatically derived */
-    g_ldmMinMatch = 32; /* heuristic */
+    g_ldmMinMatch = 16; /* heuristic */
     g_ldmBucketSizeLog = ZSTD_LDM_BUCKETSIZELOG_MAX;
 }
 
