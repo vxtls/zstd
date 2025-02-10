@@ -147,7 +147,7 @@ void ZSTD_ldm_adjustParameters(ldmParams_t* params,
             }
         } else {
             assert(1 <= (int)cParams->strategy && (int)cParams->strategy <= 9);
-            /* mapping: strat1 -> rate8 ... strat9 -> rate4*/
+            /* mapping from [fast, rate7] to [btultra2, rate4] */
             params->hashRateLog = 7 - (cParams->strategy/3);
         }
     }
